@@ -79,6 +79,10 @@ class ConvertMappingCommand extends Console\Command\Command
                 'Defines the number of indentation spaces', 4
             ),
             new InputOption(
+                'repo', null, InputOption::VALUE_OPTIONAL,
+                'Defines the default repository for generates entities', 4
+            ),
+            new InputOption(
                 'namespace', null, InputOption::VALUE_OPTIONAL,
                 'Defines a namespace for the generated entity classes, if converted from database.'
             ),
@@ -115,10 +119,12 @@ EOT
                 $em->getConnection()->getSchemaManager()
             );
 
-            $em->getConfiguration()->setMetadataDriverImpl(
-                $databaseDriver
-            );
+            $em->getConfiguration()->setMetadataDriverImpl($databaseDriver);
 
+       		if (($repo = $input->getOption('repo')) !== null) {
+                $databaseDriver->setRepositoryClassName($repo);
+            }
+            
             if (($namespace = $input->getOption('namespace')) !== null) {
                 $databaseDriver->setNamespace($namespace);
             }
