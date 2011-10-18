@@ -398,17 +398,17 @@ public function <methodName>()
         }
 
         $collections = array();
-        
+
         foreach ($metadata->associationMappings AS $mapping) {
             if ($mapping['type'] & ClassMetadataInfo::TO_MANY) {
                 $collections[] = '$this->'.$mapping['fieldName'].' = new \Doctrine\Common\Collections\ArrayCollection();';
             }
         }
-        
+
         if ($collections) {
-            return $this->_prefixCodeWithSpaces(str_replace("<collections>", implode("\n", $collections), self::$_constructorMethodTemplate));
+            return $this->_prefixCodeWithSpaces(str_replace("<collections>", implode("\n".$this->_spaces, $collections), self::$_constructorMethodTemplate));
         }
-        
+
         return '';
     }
 
@@ -576,7 +576,7 @@ public function <methodName>()
         if (isset($metadata->table['schema'])) {
             $table[] = 'schema="' . $metadata->table['schema'] . '"';
         }
-        
+
         if (isset($metadata->table['name'])) {
             $table[] = 'name="' . $metadata->table['name'] . '"';
         }
@@ -806,7 +806,7 @@ public function <methodName>()
     {
         $lines = array();
         $lines[] = $this->_spaces . '/**';
-        $lines[] = $this->_spaces . ' * @var ' . $associationMapping['targetEntity']; 
+        $lines[] = $this->_spaces . ' * @var ' . $associationMapping['targetEntity'];
 
         if ($this->_generateAnnotations) {
             $lines[] = $this->_spaces . ' *';
