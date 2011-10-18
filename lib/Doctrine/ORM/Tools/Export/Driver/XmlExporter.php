@@ -41,7 +41,7 @@ class XmlExporter extends AbstractExporter
      * Converts a single ClassMetadata instance to the exported format
      * and returns it
      *
-     * @param ClassMetadataInfo $metadata 
+     * @param ClassMetadataInfo $metadata
      * @return mixed $exported
      */
     public function exportClassMetadata(ClassMetadataInfo $metadata)
@@ -99,7 +99,7 @@ class XmlExporter extends AbstractExporter
 
         if (isset($metadata->table['indexes'])) {
             $indexesXml = $root->addChild('indexes');
-            
+
             foreach ($metadata->table['indexes'] as $name => $index) {
                 $indexXml = $indexesXml->addChild('index');
                 $indexXml->addAttribute('name', $name);
@@ -109,7 +109,7 @@ class XmlExporter extends AbstractExporter
 
         if (isset($metadata->table['uniqueConstraints'])) {
             $uniqueConstraintsXml = $root->addChild('unique-constraints');
-            
+
             foreach ($metadata->table['uniqueConstraints'] as $unique) {
                 $uniqueConstraintXml = $uniqueConstraintsXml->addChild('unique-constraint');
                 $uniqueConstraintXml->addAttribute('name', $unique['name']);
@@ -127,9 +127,9 @@ class XmlExporter extends AbstractExporter
                 }
             }
         }
-        
+
         $fields = $metadata->fieldMappings;
-        
+
         $id = array();
         foreach ($fields as $name => $field) {
             if (isset($field['id']) && $field['id']) {
@@ -202,7 +202,8 @@ class XmlExporter extends AbstractExporter
             $a2 = array_search($m2['type'],$orderMap);
             return strcmp($a1, $a2);
      	});
-        
+
+
         foreach ($metadata->associationMappings as $name => $associationMapping) {
             if ($associationMapping['type'] == ClassMetadataInfo::ONE_TO_ONE) {
                 $associationMappingXml = $root->addChild('one-to-one');
@@ -301,6 +302,9 @@ class XmlExporter extends AbstractExporter
             if ($associationMapping['isCascadeDetach']) {
                 $cascade[] = 'cascade-detach';
             }
+            if(count($cascade)==5){
+            	$cascade  = array('cascade-all');
+            }
             if ($cascade) {
                 $cascadeXml = $associationMappingXml->addChild('cascade');
                 foreach ($cascade as $type) {
@@ -308,7 +312,7 @@ class XmlExporter extends AbstractExporter
                 }
             }
         }
-        	
+
         return $this->_asXml($xml);
     }
 
