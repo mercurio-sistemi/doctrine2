@@ -240,7 +240,7 @@ class ObjectHydrator extends AbstractHydrator
      * Gets a ClassMetadata instance from the local cache.
      * If the instance is not yet in the local cache, it is loaded into the
      * local cache.
-     * 
+     *
      * @param string $className The name of the class.
      * @return ClassMetadata
      */
@@ -254,21 +254,21 @@ class ObjectHydrator extends AbstractHydrator
 
     /**
      * Hydrates a single row in an SQL result set.
-     * 
+     *
      * @internal
      * First, the data of the row is split into chunks where each chunk contains data
      * that belongs to a particular component/class. Afterwards, all these chunks
      * are processed, one after the other. For each chunk of class data only one of the
      * following code paths is executed:
-     * 
+     *
      * Path A: The data chunk belongs to a joined/associated object and the association
      *         is collection-valued.
      * Path B: The data chunk belongs to a joined/associated object and the association
      *         is single-valued.
      * Path C: The data chunk belongs to a root result element/object that appears in the topmost
      *         level of the hydrated result. A typical example are the objects of the type
-     *         specified by the FROM clause in a DQL query. 
-     * 
+     *         specified by the FROM clause in a DQL query.
+     *
      * @param array $data The data of the row to process.
      * @param array $cache The cache to use.
      * @param array $result The result array to fill.
@@ -353,7 +353,11 @@ class ObjectHydrator extends AbstractHydrator
 
                                 if (isset($this->_rsm->indexByMap[$dqlAlias])) {
                                     $field = $this->_rsm->indexByMap[$dqlAlias];
-                                    $indexValue = $this->_ce[$entityName]->reflFields[$field]->getValue($element);
+                                    if(isset($this->_ce[$entityName]->reflFields[$field])){
+                                    	$indexValue = $this->_ce[$entityName]->reflFields[$field]->getValue($element);
+                                    }else{
+                                    	$indexValue = $data[$field];
+                                    }
                                     $reflFieldValue->hydrateSet($indexValue, $element);
                                     $this->_identifierMap[$path][$id[$parentAlias]][$id[$dqlAlias]] = $indexValue;
                                 } else {
@@ -430,7 +434,11 @@ class ObjectHydrator extends AbstractHydrator
                     $element = $this->_getEntity($rowData[$dqlAlias], $dqlAlias);
                     if (isset($this->_rsm->indexByMap[$dqlAlias])) {
                         $field = $this->_rsm->indexByMap[$dqlAlias];
-                        $key = $this->_ce[$entityName]->reflFields[$field]->getValue($element);
+                        if(isset($this->_ce[$entityName]->reflFields[$field]) && !isset($this->_ce[$entityName]->associationMappings[$field])){
+                    		$key = $this->_ce[$entityName]->reflFields[$field]->getValue($element);
+                    	}else{
+                    		$key = $data[$field];
+                    	}
                         if ($this->_rsm->isMixed) {
                             $element = array($key => $element);
                             $result[] = $element;
