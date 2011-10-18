@@ -117,7 +117,7 @@ public function <methodName>()
  * @param <variableType>$<variableName>
  * @return <entity>
  */
-public function <methodName>(<methodTypeHint>$<variableName>)
+public function <methodName>(<methodTypeHint>$<variableName><variableDefault>)
 {
 <spaces>$this-><fieldName> = $<variableName>;
 <spaces>return $this;
@@ -398,7 +398,7 @@ public function <methodName>()
         }
 
         $collections = array();
-
+        
         foreach ($metadata->associationMappings AS $mapping) {
             if ($mapping['type'] & ClassMetadataInfo::TO_MANY) {
                 $collections[] = '$this->'.$mapping['fieldName'].' = new \Doctrine\Common\Collections\ArrayCollection();';
@@ -634,7 +634,7 @@ public function <methodName>()
 
         foreach ($metadata->associationMappings as $associationMapping) {
             if ($associationMapping['type'] & ClassMetadataInfo::TO_ONE) {
-                if ($code = $this->_generateEntityStubMethod($metadata, 'set', $associationMapping['fieldName'], $associationMapping['targetEntity'])) {
+                if ($code = $this->_generateEntityStubMethod($metadata, 'set', $associationMapping['fieldName'], $associationMapping['targetEntity'], 'null')) {
                     $methods[] = $code;
                 }
                 if ($code = $this->_generateEntityStubMethod($metadata, 'get', $associationMapping['fieldName'], $associationMapping['targetEntity'])) {
@@ -707,7 +707,7 @@ public function <methodName>()
         return implode("\n", $lines);
     }
 
-    private function _generateEntityStubMethod(ClassMetadataInfo $metadata, $type, $fieldName, $typeHint = null)
+    private function _generateEntityStubMethod(ClassMetadataInfo $metadata, $type, $fieldName, $typeHint = null,  $defaultValue = null)
     {
         if ($type == "add") {
             $addMethod = explode("\\", $typeHint);
@@ -737,7 +737,8 @@ public function <methodName>()
           '<variableName>'      => Inflector::camelize($fieldName),
           '<methodName>'        => $methodName,
           '<fieldName>'         => $fieldName,
-          '<entity>'            => $this->_getClassName($metadata)
+           '<entity>'            => $this->_getClassName($metadata),
+          '<variableDefault>'   => ($defaultValue!==null?('='.$defaultValue):'')
         );
 
         $method = str_replace(
@@ -805,7 +806,7 @@ public function <methodName>()
     {
         $lines = array();
         $lines[] = $this->_spaces . '/**';
-        $lines[] = $this->_spaces . ' * @var ' . $associationMapping['targetEntity'];
+        $lines[] = $this->_spaces . ' * @var ' . $associationMapping['targetEntity']; 
 
         if ($this->_generateAnnotations) {
             $lines[] = $this->_spaces . ' *';
