@@ -655,17 +655,17 @@ class BasicEntityPersister
 
             // TRICKY: since the association is specular source and target are flipped
             foreach ($owningAssoc['targetToSourceKeyColumns'] as $sourceKeyColumn => $targetKeyColumn) {
-            	if( isset($sourceClass->fieldNames[$sourceKeyColumn])){ // classic field
-            		// unset the old value and set the new sql aliased value here. By definition
-	                // unset($identifier[$targetKeyColumn] works here with how UnitOfWork::createEntity() calls this method.
-	                $ref = $sourceClass->reflFields[$sourceClass->fieldNames[$sourceKeyColumn]];
-	                $identifier[$this->_getSQLTableAlias($targetClass->name) . "." . $targetKeyColumn] = $ref->getValue($sourceEntity);
-	                unset($identifier[$targetKeyColumn]);
-            	} elseif(isset($sourceClass->associationMappings[$sourceClass->getFieldForColumn($sourceKeyColumn)]['id'])) { //field used as association key
-					$ids = $this->_em->getUnitOfWork()->getEntityIdentifier($sourceEntity);
-					$identifier[$this->_getSQLTableAlias($targetClass->name) . "." . $targetKeyColumn] = $ids[$sourceClass->getFieldForColumn($sourceKeyColumn)];
-					unset($identifier[$targetKeyColumn]);
-            	}else{
+                if( isset($sourceClass->fieldNames[$sourceKeyColumn])){ // classic field
+                    // unset the old value and set the new sql aliased value here. By definition
+                    // unset($identifier[$targetKeyColumn] works here with how UnitOfWork::createEntity() calls this method.
+                    $ref = $sourceClass->reflFields[$sourceClass->fieldNames[$sourceKeyColumn]];
+                    $identifier[$this->_getSQLTableAlias($targetClass->name) . "." . $targetKeyColumn] = $ref->getValue($sourceEntity);
+                    unset($identifier[$targetKeyColumn]);
+                } elseif(isset($sourceClass->associationMappings[$sourceClass->getFieldForColumn($sourceKeyColumn)]['id'])) { //field used as association key
+                    $ids = $this->_em->getUnitOfWork()->getEntityIdentifier($sourceEntity);
+                    $identifier[$this->_getSQLTableAlias($targetClass->name) . "." . $targetKeyColumn] = $ids[$sourceClass->getFieldForColumn($sourceKeyColumn)];
+                    unset($identifier[$targetKeyColumn]);
+                }else{
                     throw MappingException::joinColumnMustPointToMappedField(
                         $sourceClass->name, $sourceKeyColumn
                     );
@@ -674,7 +674,7 @@ class BasicEntityPersister
 
             $targetEntity = $this->load($identifier, null, $assoc);
 
-            if ($targetEntity !== null) { 
+            if ($targetEntity !== null) {
                 $targetClass->setFieldValue($targetEntity, $assoc['mappedBy'], $sourceEntity);
             }
         }
