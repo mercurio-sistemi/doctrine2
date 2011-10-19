@@ -94,8 +94,10 @@ class XmlExporter extends AbstractExporter
                 $discriminatorMappingXml->addAttribute('class', $className);
             }
         }
-
-        $root->addChild('change-tracking-policy', $this->_getChangeTrackingPolicyString($metadata->changeTrackingPolicy));
+		$trackingPolicy = $this->_getChangeTrackingPolicyString($metadata->changeTrackingPolicy);
+        if($trackingPolicy!='DEFERRED_IMPLICIT'){
+        	$root->addChild('change-tracking-policy', $trackingPolicy);
+        }
 
         if (isset($metadata->table['indexes'])) {
             $indexesXml = $root->addChild('indexes');
