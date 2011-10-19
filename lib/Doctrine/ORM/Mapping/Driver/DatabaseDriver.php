@@ -74,10 +74,17 @@ class DatabaseDriver implements Driver
      */
     private $namespace;
 
+	/**
+     * The default repository for the generated entities.
+     *
+     * @var string
+     */
+    private $repositoryClassName;
+
     /**
      * Initializes a new AnnotationDriver that uses the given AnnotationReader for reading
      * docblock annotations.
-     * 
+     *
      * @param AnnotationReader $reader The AnnotationReader to use.
      */
     public function __construct(AbstractSchemaManager $schemaManager)
@@ -112,7 +119,7 @@ class DatabaseDriver implements Driver
         }
 
         $tables = array();
-                
+
         foreach ($this->_sm->listTableNames() as $tableName) {
             $tables[$tableName] = $this->_sm->listTableDetails($tableName);
         }
@@ -125,17 +132,16 @@ class DatabaseDriver implements Driver
             } else {
                 $foreignKeys = array();
             }
-
             $allForeignKeyColumns = array();
             foreach ($foreignKeys AS $foreignKey) {
                 $allForeignKeyColumns = array_merge($allForeignKeyColumns, $foreignKey->getLocalColumns());
             }
-            
+
             $pkColumns = $table->getPrimaryKey()->getColumns();
             sort($pkColumns);
             sort($allForeignKeyColumns);
 
-            if ($pkColumns == $allForeignKeyColumns && count($foreignKeys) == 2) {
+            if ($pkColumns == $allForeignKeyColumns && count($foreignKeys) == 2 && count($table->getColumns())==count($foreignKeys)) {
                 $this->manyToManyTables[$tableName] = $table;
             } else {
                 // lower-casing is necessary because of Oracle Uppercase Tablenames,
@@ -146,7 +152,7 @@ class DatabaseDriver implements Driver
             }
         }
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -161,6 +167,9 @@ class DatabaseDriver implements Driver
         $tableName = $this->classToTableNames[$className];
 
         $metadata->name = $className;
+        if($this->getRepositoryClassName()){
+        	$metadata->setCustomRepositoryClass($this->getRepositoryClassName());
+        }
         $metadata->table['name'] = $tableName;
 
         $columns = $this->tables[$tableName]->getColumns();
@@ -170,7 +179,7 @@ class DatabaseDriver implements Driver
         } catch(SchemaException $e) {
             $primaryKeyColumns = array();
         }
-        
+
         if ($this->_sm->getDatabasePlatform()->supportsForeignKeyConstraints()) {
             $foreignKeys = $this->tables[$tableName]->getForeignKeys();
         } else {
@@ -192,7 +201,17 @@ class DatabaseDriver implements Driver
                 continue;
             }
 
-            $fieldMapping['fieldName'] = $this->getFieldNameForColumn($tableName, $column->getName(), false);
+
+
+        	$isPkFk = false;
+        	foreach ($foreignKeys as $fk){
+        		if(in_array($column->getName(), $fk->getColumns())){
+        			$isPkFk = true;
+        			break;
+        		}
+        	}
+
+            $fieldMapping['fieldName'] = $this->getFieldNameForColumn($tableName, $column->getName(), $isPkFk);
             $fieldMapping['columnName'] = $column->getName();
             $fieldMapping['type'] = strtolower((string) $column->getType());
 
@@ -204,6 +223,10 @@ class DatabaseDriver implements Driver
             }
             $fieldMapping['nullable'] = $column->getNotNull() ? false : true;
 
+            if($isPkFk && $fieldMapping['id']){
+            	$fieldMapping['associationKey']=true;
+            }
+
             if (isset($fieldMapping['id'])) {
                 $ids[] = $fieldMapping;
             } else {
@@ -212,7 +235,18 @@ class DatabaseDriver implements Driver
         }
 
         if ($ids) {
-            if (count($ids) == 1 && in_array($ids[0]['type'], array(Type::INTEGER, Type::SMALLINT,Type::BIGINT))) {
+
+        	$idsInt = in_array($ids[0]['type'], array(Type::INTEGER, Type::SMALLINT,Type::BIGINT));
+
+        	$isPkFk = false;
+        	foreach ($foreignKeys as $fk){
+        		if(!array_diff($primaryKeyColumns, $fk->getColumns())){
+        			$isPkFk = true;
+        			break;
+        		}
+        	}
+
+            if (count($ids) == 1 && $idsInt && !$isPkFk) {
                 $metadata->setIdGeneratorType(ClassMetadataInfo::GENERATOR_TYPE_AUTO);
             }
 
@@ -246,15 +280,18 @@ class DatabaseDriver implements Driver
 
                     $localColumn = current($myFk->getColumns());
                     $associationMapping = array();
-                    $associationMapping['fieldName'] = $this->getFieldNameForColumn($manyTable->getName(), current($otherFk->getColumns()), true);
+                    $associationMapping['fieldName'] = $this->pluralize($this->getFieldNameForColumn($manyTable->getName(), current($otherFk->getColumns()), true));
                     $associationMapping['targetEntity'] = $this->getClassNameForTable($otherFk->getForeignTableName());
-                    if (current($manyTable->getColumns())->getName() == $localColumn) {
-                        $associationMapping['inversedBy'] = $this->getFieldNameForColumn($manyTable->getName(), current($myFk->getColumns()), true);
+                    if (current($manyTable->getColumns())->getName() == $localColumn) { // owing side od inverse side
+                        $associationMapping['inversedBy'] = $this->pluralize($this->getFieldNameForColumn($manyTable->getName(), current($myFk->getColumns()), true));
                         $associationMapping['joinTable'] = array(
                             'name' => strtolower($manyTable->getName()),
                             'joinColumns' => array(),
                             'inverseJoinColumns' => array(),
                         );
+
+
+
 
                         $fkCols = $myFk->getForeignColumns();
                         $cols = $myFk->getColumns();
@@ -265,6 +302,7 @@ class DatabaseDriver implements Driver
                             );
                         }
 
+
                         $fkCols = $otherFk->getForeignColumns();
                         $cols = $otherFk->getColumns();
                         for ($i = 0; $i < count($cols); $i++) {
@@ -273,9 +311,18 @@ class DatabaseDriver implements Driver
                                 'referencedColumnName' => $fkCols[$i],
                             );
                         }
+	                    // default indexes for relations with one fk column
+						if(count($cols) == 1){
+							$associationMapping["indexBy"]=current($fkCols);
+						}
                     } else {
-                        $associationMapping['mappedBy'] = $this->getFieldNameForColumn($manyTable->getName(), current($myFk->getColumns()), true);
+                    	$fkCols = $otherFk->getForeignColumns();
+                  	 	if(count($fkCols) == 1){
+							$associationMapping["indexBy"]=current($fkCols);
+						}
+                        $associationMapping['mappedBy'] = $this->pluralize($this->getFieldNameForColumn($manyTable->getName(), current($myFk->getColumns()), true));
                     }
+
                     $metadata->mapManyToMany($associationMapping);
                     break;
                 }
@@ -286,10 +333,21 @@ class DatabaseDriver implements Driver
             $foreignTable = $foreignKey->getForeignTableName();
             $cols = $foreignKey->getColumns();
             $fkCols = $foreignKey->getForeignColumns();
+			$pkCols = $this->tables[$foreignTable]->getPrimaryKey()->getColumns();
 
-            $localColumn = current($cols);
+
+			if(count($cols)==1){ //
+				$localColumn = current($cols);
+			}else{
+				if(in_array($foreignTable, $cols)){ // lazy entity
+					$localColumn = $foreignTable;
+				}else{
+					$localColumn = current($cols);
+				}
+			}
+
             $associationMapping = array();
-            $associationMapping['fieldName'] = $this->getFieldNameForColumn($tableName, $localColumn, true);
+
             $associationMapping['targetEntity'] = $this->getClassNameForTable($foreignTable);
 
             for ($i = 0; $i < count($cols); $i++) {
@@ -298,43 +356,73 @@ class DatabaseDriver implements Driver
                     'referencedColumnName' => $fkCols[$i],
                 );
             }
-            $metadata->mapManyToOne($associationMapping);
+			// if FKs cols equal to PKs cols then is an one-to-one mapping
+			if(!count(array_diff($fkCols, $pkCols)) && !count(array_diff($cols, $primaryKeyColumns)) ){
+				$associationMapping['fieldName'] = $this->getFieldNameForColumn($tableName, $localColumn, true);
+
+				$metadata->mapOneToOne($associationMapping);
+			}else{
+				$associationMapping['fieldName'] = $this->getFieldNameForColumn($tableName, $localColumn, true);
+				$associationMapping['inversedBy'] = $this->pluralize($this->getFieldNameForColumn($foreignTable, $tableName, true));
+				$metadata->mapManyToOne($associationMapping);
+			}
         }
-        
+
+
         foreach ($this->tables as $tableCandidate){
+        	$candidateTableName = $tableCandidate->getName();
 	        if ($this->_sm->getDatabasePlatform()->supportsForeignKeyConstraints()) {
 	            $foreignKeysCandidate = $tableCandidate->getForeignKeys();
 	        } else {
 	        	$foreignKeysCandidate = array();
         	}
-        	
+
         	foreach ($foreignKeysCandidate as $foreignKey){
         		$foreignTable = $foreignKey->getForeignTableName();
 
-        		if($foreignTable == $tableName && !isset($this->manyToManyTables[$tableCandidate->getName()])){
-        			
+        		if($foreignTable == $tableName && !isset($this->manyToManyTables[$candidateTableName])){
+
         			$fkCols = $foreignKey->getForeignColumns();
 	        		$cols = $foreignKey->getColumns();
-	        		
-	        		
+
+					$pkCols = $tableCandidate->getPrimaryKey()->getColumns();
+
 	        		$localColumn = current($cols);
-	        		 
+
         			$associationMapping = array();
-            		$associationMapping['fieldName'] = $this->getFieldNameForColumn($tableCandidate->getName(), $tableCandidate->getName(), true);
-            		$associationMapping['targetEntity'] = $this->getClassNameForTable($tableCandidate->getName());
-            		$associationMapping['mappedBy'] = $this->getFieldNameForColumn($tableCandidate->getName(), $localColumn, true);
-            		
-            		try {
-			            $primaryKeyColumns = $tableCandidate->getPrimaryKey()->getColumns();
-	            		if(count($primaryKeyColumns)==1){
-	            			$indexColumn = current($primaryKeyColumns);
-	            			$associationMapping['indexBy'] = $indexColumn;
+
+            		$associationMapping['targetEntity'] = $this->getClassNameForTable($candidateTableName);
+
+					// if FKs cols equal to PKs cols then is an one-to-one mapping
+					if(!count(array_diff($fkCols, $primaryKeyColumns)) && !count(array_diff($pkCols, $cols))){
+
+						$associationMapping['fieldName'] = $this->getFieldNameForColumn($tableCandidate->getName(), $tableCandidate->getName(), true);
+
+						$localColumnCandidate = current($pkCols);
+						$associationMapping['mappedBy'] = $this->getFieldNameForColumn($tableCandidate->getName(), $localColumn, true);
+						$associationMapping['cascade'] = array('all');
+
+	        			$metadata->mapOneToOne($associationMapping);
+					}else{
+						$primaryKeyColumnsCandidate = $tableCandidate->getPrimaryKey()->getColumns();
+
+	            		if(count($primaryKeyColumnsCandidate)==1){
+	            			$associationMapping['indexBy'] = current($primaryKeyColumnsCandidate);
+	            		}else{
+	            			$diff = array_diff($primaryKeyColumnsCandidate, $cols);
+
+	            			$associationMapping['cascade'] = array('all');
+
+	            			if(count($diff)==1){
+								$associationMapping['indexBy']= current($diff);
+	            			}
 	            		}
-			        } catch(SchemaException $e) {
-			            
-			        }
-           	
-	        		$metadata->mapOneToMany($associationMapping);
+
+						$associationMapping['fieldName'] = $this->pluralize($this->getFieldNameForColumn($tableCandidate->getName(),  $tableCandidate->getName(), true));
+						$associationMapping['mappedBy'] = $this->getFieldNameForColumn($tableCandidate->getName(), $localColumn, true);
+
+						$metadata->mapOneToMany($associationMapping);
+					}
         		}
         	}
         }
@@ -434,5 +522,50 @@ class DatabaseDriver implements Driver
     public function setNamespace($namespace)
     {
         $this->namespace = $namespace;
+    }
+	/**
+     * Set the repository for the generated entities.
+     *
+     * @param string $repositoryClassName
+     * @return void
+     */
+    public function setRepositoryClassName($repositoryClassName)
+    {
+        $this->repositoryClassName = $repositoryClassName;
+    }
+
+	/**
+     * Return the repository for the generated entities.
+     *
+     * @return string
+     */
+    public function getRepositoryClassName()
+    {
+        return $this->repositoryClassName;
+    }
+	public function pluralize($tableName) {
+    	if(substr($tableName, -1)=="a"){
+    		if(substr($tableName, -2)=="cia"){
+    			return substr($tableName, 0,-2)."e";
+    		}
+    		if(substr($tableName, -2)=="ia"){
+    			return substr($tableName, 0,-2)."ie";
+    		}
+    		if(substr($tableName, -2)=="ca"){
+    			return substr($tableName, 0,-1)."he";
+    		}
+    		return substr($tableName, 0,-1)."e";
+    	}elseif(substr($tableName, -1)=="o"){
+    		if(substr($tableName, -2)=="io"){
+    			return substr($tableName, 0,-1);
+    		}
+    		if(substr($tableName, -2)=="co"){
+    			return substr($tableName, 0,-1)."hi";
+    		}
+    		return substr($tableName, 0,-1)."i";
+    	}elseif(substr($tableName, -1)=="e"){
+    		return substr($tableName, 0,-1)."i";
+    	}
+    	return "many".ucfirst($tableName);
     }
 }
