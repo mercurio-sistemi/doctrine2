@@ -1509,9 +1509,8 @@ class ClassMetadataInfo implements ClassMetadata
     protected function _storeAssociationMapping(array $assocMapping)
     {
         $sourceFieldName = $assocMapping['fieldName'];
-        if (isset($this->fieldMappings[$sourceFieldName]) || isset($this->associationMappings[$sourceFieldName])) {
-        	// asmir // mapping brutale, serve controllere qualcosa?
-            //throw MappingException::duplicateFieldMapping($this->name, $sourceFieldName);
+        if (isset($this->associationMappings[$sourceFieldName]) || (isset($this->associationMappings[$sourceFieldName]) && !$this->associationMappings[$sourceFieldName]['associationKey'])) {
+        	throw MappingException::duplicateFieldMapping($this->name, $sourceFieldName);
         }
         $this->associationMappings[$sourceFieldName] = $assocMapping;
     }
