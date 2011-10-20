@@ -420,7 +420,10 @@ class DatabaseDriver implements Driver
 
 						$associationMapping['fieldName'] = $this->pluralize($this->getFieldNameForColumn($tableCandidate->getName(),  $tableCandidate->getName(), true));
 						$associationMapping['mappedBy'] = $this->getFieldNameForColumn($tableCandidate->getName(), $localColumn, true);
-
+						// fix for multiple association with same name
+						if($metadata->hasAssociation($associationMapping['fieldName'])){
+							$associationMapping['fieldName'] .=ucfirst($associationMapping['mappedBy'] );
+						}
 						$metadata->mapOneToMany($associationMapping);
 					}
         		}
