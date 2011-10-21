@@ -280,7 +280,9 @@ class DatabaseDriver implements Driver
 
                     $localColumn = current($myFk->getColumns());
                     $associationMapping = array();
+
                     $associationMapping['fieldName'] = $this->pluralize($this->getFieldNameForColumn($manyTable->getName(), current($otherFk->getColumns()), true));
+
                     $associationMapping['targetEntity'] = $this->getClassNameForTable($otherFk->getForeignTableName());
                     if (current($manyTable->getColumns())->getName() == $localColumn) { // owing side od inverse side
                         $associationMapping['inversedBy'] = $this->pluralize($this->getFieldNameForColumn($manyTable->getName(), current($myFk->getColumns()), true));
@@ -362,6 +364,7 @@ class DatabaseDriver implements Driver
 
 				$metadata->mapOneToOne($associationMapping);
 			}else{
+				// questo non accade mai
 				$associationMapping['fieldName'] = $this->getFieldNameForColumn($tableName, $localColumn, true);
 				$associationMapping['inversedBy'] = $this->pluralize($this->getFieldNameForColumn($foreignTable, $tableName, true));
 				$metadata->mapManyToOne($associationMapping);
