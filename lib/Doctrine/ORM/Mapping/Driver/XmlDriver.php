@@ -89,7 +89,7 @@ class XmlDriver extends AbstractFileDriver
         if (isset($xmlRoot['schema'])) {
             $metadata->table['schema'] = (string)$xmlRoot['schema'];
         }*/
-        
+
         if (isset($xmlRoot['inheritance-type'])) {
             $inheritanceType = (string)$xmlRoot['inheritance-type'];
             $metadata->setInheritanceType(constant('Doctrine\ORM\Mapping\ClassMetadata::INHERITANCE_TYPE_' . $inheritanceType));
@@ -432,8 +432,8 @@ class XmlDriver extends AbstractFileDriver
                     $mapping['orderBy'] = $orderBy;
                 }
 
-                if (isset($manyToManyElement->{'index-by'})) {
-                    $mapping['indexBy'] = (string)$manyToManyElement->{'index-by'};
+                if (isset($manyToManyElement['index-by'])) {
+                    $mapping['indexBy'] = (string)$manyToManyElement['index-by'];
                 }
 
                 $metadata->mapManyToMany($mapping);

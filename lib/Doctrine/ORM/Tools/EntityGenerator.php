@@ -665,7 +665,7 @@ public function <methodName>()
             $joinColumns = array();
         }
         foreach ($joinColumns as $joinColumn) {
-            if(!isset($joinColumn['nullable']) || !$joinColumn['nullable']){
+            if(isset($joinColumn['nullable']) && !$joinColumn['nullable']){
                 return false;
             }
         }
