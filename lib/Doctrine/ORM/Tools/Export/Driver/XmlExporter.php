@@ -204,7 +204,8 @@ class XmlExporter extends AbstractExporter
             if (isset($associationMapping['inversedBy'])) {
                 $associationMappingXml->addAttribute('inversed-by', $associationMapping['inversedBy']);
             }
-            if (isset($associationMapping['orphanRemoval'])) {
+            if (isset($associationMapping['orphanRemoval']) && $associationMapping['orphanRemoval']!==false) {
+                // false is the xml default 
                 $associationMappingXml->addAttribute('orphan-removal', $associationMapping['orphanRemoval']);
             }
             if (isset($associationMapping['joinTable']) && $associationMapping['joinTable']) {
