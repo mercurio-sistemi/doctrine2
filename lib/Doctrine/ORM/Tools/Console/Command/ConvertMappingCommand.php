@@ -82,6 +82,10 @@ class ConvertMappingCommand extends Console\Command\Command
                 'namespace', null, InputOption::VALUE_OPTIONAL,
                 'Defines a namespace for the generated entity classes, if converted from database.'
             ),
+			new InputOption(
+                'repo', null, InputOption::VALUE_OPTIONAL,
+                'Defines a repository class for the generated entity classes, if converted from database.'
+            ),            
         ))
         ->setHelp(<<<EOT
 Convert mapping information between supported formats.
@@ -121,6 +125,9 @@ EOT
 
             if (($namespace = $input->getOption('namespace')) !== null) {
                 $databaseDriver->setNamespace($namespace);
+            }
+            if (($repo = $input->getOption('repo')) !== null) {
+                $databaseDriver->setRepositoryClassName($repo);
             }
         }
 
