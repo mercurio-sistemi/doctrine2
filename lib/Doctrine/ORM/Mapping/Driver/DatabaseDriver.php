@@ -121,7 +121,11 @@ class DatabaseDriver implements Driver
         $tables = array();
 
         foreach ($this->_sm->listTableNames() as $tableName) {
-            $tables[$tableName] = $this->_sm->listTableDetails($tableName);
+        	try {
+        		$tables[$tableName] = $this->_sm->listTableDetails($tableName);	
+        	} catch (\Doctrine\DBAL\DBALException $e) {
+        		
+        	}
         }
 
         $this->tables = $this->manyToManyTables = $this->classToTableNames = array();
@@ -316,12 +320,13 @@ class DatabaseDriver implements Driver
 						}
                     } else {
                     	$fkCols = $otherFk->getForeignColumns();
+                    	
                   	 	if(count($fkCols) == 1){
 							$associationMapping["indexBy"]=current($fkCols);
 						}
+
                         $associationMapping['mappedBy'] = $this->pluralize($this->getFieldNameForColumn($manyTable->getName(), current($myFk->getColumns()), true));
                     }
-
                     $metadata->mapManyToMany($associationMapping);
                     break;
                 }
@@ -401,19 +406,23 @@ class DatabaseDriver implements Driver
 
             		$associationMapping['targetEntity'] = $this->getClassNameForTable($candidateTableName);
 
+            		
+            		
+        			$colName = $tableCandidate->getName();
+					if(substr($colName, 0, strlen($tableName))==$tableName && $colName[strlen($tableName)]=="_"){
+						$colName = substr($colName,strlen($tableName)+1);
+					}
+					$associationMapping['fieldName'] = $this->getFieldNameForColumn($tableCandidate->getName(), $colName, true);
+					$associationMapping['mappedBy'] = $this->getFieldNameForColumn($tableCandidate->getName(), $localColumn, true);						
 					// if FKs cols equal to PKs cols then is an one-to-one mapping
 					if(!count(array_diff($fkCols, $primaryKeyColumns)) && !count(array_diff($pkCols, $cols))){
-
-						$associationMapping['fieldName'] = $this->getFieldNameForColumn($tableCandidate->getName(), $tableCandidate->getName(), true);
-
-						$localColumnCandidate = current($pkCols);
-						$associationMapping['mappedBy'] = $this->getFieldNameForColumn($tableCandidate->getName(), $localColumn, true);
+												
 						$associationMapping['cascade'] = array('all');
-
 	        			$metadata->mapOneToOne($associationMapping);
+	        			
 					}else{
 						$primaryKeyColumnsCandidate = $tableCandidate->getPrimaryKey()->getColumns();
-
+						
 	            		if(count($primaryKeyColumnsCandidate)==1){
 	            			$associationMapping['indexBy'] = current($primaryKeyColumnsCandidate);
 	            		}else{
@@ -425,14 +434,7 @@ class DatabaseDriver implements Driver
 								$associationMapping['indexBy']= current($diff);
 	            			}
 	            		}
-
-	            		$colName = $tableCandidate->getName();
-						if(substr($colName, 0, strlen($tableName))==$tableName && $colName[strlen($tableName)]=="_"){
-							$colName = substr($colName,strlen($tableName)+1);
-						}
-
-						$associationMapping['fieldName'] = $this->pluralize($this->getFieldNameForColumn($tableCandidate->getName(),  $colName, true));
-						$associationMapping['mappedBy'] = $this->getFieldNameForColumn($tableCandidate->getName(), $localColumn, true);
+						$associationMapping['fieldName'] = $this->pluralize($associationMapping['fieldName']);
 						// fix for multiple association with same name
 						if($metadata->hasAssociation($associationMapping['fieldName'])){
 							$associationMapping['fieldName'] .=ucfirst($associationMapping['mappedBy'] );
