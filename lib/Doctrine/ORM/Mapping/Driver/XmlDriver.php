@@ -299,7 +299,7 @@ class XmlDriver extends AbstractFileDriver
                 }
 
                 if (isset($oneToOneElement['orphan-removal'])) {
-                    $mapping['orphanRemoval'] = $oneToOneElement['orphan-removal']==="true";
+                    $mapping['orphanRemoval'] = $oneToOneElement['orphan-removal']=="true";
                 }
 
                 $metadata->mapOneToOne($mapping);
