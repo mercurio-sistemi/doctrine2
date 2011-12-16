@@ -1394,28 +1394,36 @@ class BasicEntityPersister
      * @param mixed $value
      * @return integer
      */
-    private function getType($field, $value)
+	private function getType($field, $value)
+    {
+        return $this->getRecursiveType($field, $value, $this->_class);
+    }
+    /**
+     * Infer (recursivley) field type to be used by parameter type casting.
+     * Used by getType() method.
+     * 
+     * @param string $field
+     * @param mixed $value
+     * @return integer
+     */
+ 	private function getRecursiveType($field, $value, ClassMetadata $class)
     {
         switch (true) {
-            case (isset($this->_class->fieldMappings[$field])):
-                $type = Type::getType($this->_class->fieldMappings[$field]['type'])->getBindingType();
+            case (isset($class->fieldMappings[$field])):
+                $type = Type::getType($class->fieldMappings[$field]['type'])->getBindingType();
                 break;
 
-            case (isset($this->_class->associationMappings[$field])):
-                $assoc = $this->_class->associationMappings[$field];
-
+            case (isset($class->associationMappings[$field])):
+                $assoc = $class->associationMappings[$field];
+				
                 if (count($assoc['sourceToTargetKeyColumns']) > 1) {
                     throw Query\QueryException::associationPathCompositeKeyNotSupported();
                 }
 
                 $targetClass  = $this->_em->getClassMetadata($assoc['targetEntity']);
-                $targetColumn = $assoc['joinColumns'][0]['referencedColumnName'];
-                $type         = null;
-
-                if (isset($targetClass->fieldNames[$targetColumn])) {
-                    $type = Type::getType($targetClass->fieldMappings[$targetClass->fieldNames[$targetColumn]]['type'])->getBindingType();
-                }
-
+               	// non è sempre vero che posso cercare una pk		
+				$type = $this->getRecursiveType($targetClass->identifier[0], $value, $targetClass);
+                
                 break;
 
             default:
@@ -1465,8 +1473,10 @@ class BasicEntityPersister
                 $class = $this->_em->getClassMetadata(get_class($value));
                 $idValues = $class->getIdentifierValues($value);
             }
-
-            $value = $idValues[key($idValues)];
+            $value = reset($idValues);
+            if (is_object($value)){
+            	$value = $this->getIndividualValue($value);
+            }
         }
 
         return $value;
