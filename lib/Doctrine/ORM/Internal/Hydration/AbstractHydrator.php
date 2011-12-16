@@ -60,7 +60,7 @@ abstract class AbstractHydrator
     /**
      * Initializes a new instance of a class derived from <tt>AbstractHydrator</tt>.
      *
-     * @param Doctrine\ORM\EntityManager $em The EntityManager to use.
+     * @param \Doctrine\ORM\EntityManager $em The EntityManager to use.
      */
     public function __construct(EntityManager $em)
     {
@@ -245,6 +245,9 @@ abstract class AbstractHydrator
             if (isset($cache[$key]['isMetaColumn'])) {
                 if ( ! isset($rowData[$dqlAlias][$cache[$key]['fieldName']]) || $value !== null) {
                     $rowData[$dqlAlias][$cache[$key]['fieldName']] = $value;
+                    if ($cache[$key]['isIdentifier']) {
+                        $nonemptyComponents[$dqlAlias] = true;
+                    }
                 }
                 if ( ! isset($nonemptyComponents[$dqlAlias]) && $value !== null) {
                     $nonemptyComponents[$dqlAlias] = true;
@@ -343,7 +346,7 @@ abstract class AbstractHydrator
     /**
      * Register entity as managed in UnitOfWork.
      *
-     * @param Doctrine\ORM\Mapping\ClassMetadata $class
+     * @param \Doctrine\ORM\Mapping\ClassMetadata $class
      * @param object $entity
      * @param array $data
      *

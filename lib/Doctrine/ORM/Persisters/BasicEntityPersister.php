@@ -79,28 +79,28 @@ class BasicEntityPersister
     /**
      * Metadata object that describes the mapping of the mapped entity class.
      *
-     * @var Doctrine\ORM\Mapping\ClassMetadata
+     * @var \Doctrine\ORM\Mapping\ClassMetadata
      */
     protected $_class;
 
     /**
      * The underlying DBAL Connection of the used EntityManager.
      *
-     * @var Doctrine\DBAL\Connection $conn
+     * @var \Doctrine\DBAL\Connection $conn
      */
     protected $_conn;
 
     /**
      * The database platform.
      *
-     * @var Doctrine\DBAL\Platforms\AbstractPlatform
+     * @var \Doctrine\DBAL\Platforms\AbstractPlatform
      */
     protected $_platform;
 
     /**
      * The EntityManager instance.
      *
-     * @var Doctrine\ORM\EntityManager
+     * @var \Doctrine\ORM\EntityManager
      */
     protected $_em;
 
@@ -172,8 +172,8 @@ class BasicEntityPersister
      * Initializes a new <tt>BasicEntityPersister</tt> that uses the given EntityManager
      * and persists instances of the class described by the given ClassMetadata descriptor.
      *
-     * @param Doctrine\ORM\EntityManager $em
-     * @param Doctrine\ORM\Mapping\ClassMetadata $class
+     * @param \Doctrine\ORM\EntityManager $em
+     * @param \Doctrine\ORM\Mapping\ClassMetadata $class
      */
     public function __construct(EntityManager $em, ClassMetadata $class)
     {
@@ -184,7 +184,7 @@ class BasicEntityPersister
     }
 
     /**
-     * @return Doctrine\ORM\Mapping\ClassMetadata
+     * @return \Doctrine\ORM\Mapping\ClassMetadata
      */
     public function getClassMetadata()
     {
@@ -272,7 +272,7 @@ class BasicEntityPersister
     /**
      * Fetch the current version value of a versioned entity.
      *
-     * @param Doctrine\ORM\Mapping\ClassMetadata $versionedClass
+     * @param \Doctrine\ORM\Mapping\ClassMetadata $versionedClass
      * @param mixed $id
      * @return mixed
      */
@@ -338,10 +338,19 @@ class BasicEntityPersister
         $set = $params = $types = array();
 
         foreach ($updateData as $columnName => $value) {
-            $set[] = (isset($this->_class->fieldNames[$columnName]))
-                ? $this->_class->getQuotedColumnName($this->_class->fieldNames[$columnName], $this->_platform) . ' = ?'
-                : $columnName . ' = ?';
+            $column = $columnName;
+            $placeholder = '?';
+            
+            if (isset($this->_class->fieldNames[$columnName])) {
+                $column = $this->_class->getQuotedColumnName($this->_class->fieldNames[$columnName], $this->_platform);
 
+                if (isset($this->_class->fieldMappings[$this->_class->fieldNames[$columnName]]['requireSQLConversion'])) {
+                    $type = Type::getType($this->_columnTypes[$columnName]);
+                    $placeholder = $type->convertToDatabaseValueSQL('?', $this->_platform);
+                }
+            }
+
+            $set[] = $column . ' = ' . $placeholder;
             $params[] = $value;
             $types[] = $this->_columnTypes[$columnName];
         }
@@ -744,7 +753,7 @@ class BasicEntityPersister
      * Load an array of entities from a given dbal statement.
      *
      * @param array $assoc
-     * @param Doctrine\DBAL\Statement $stmt
+     * @param \Doctrine\DBAL\Statement $stmt
      *
      * @return array
      */
@@ -768,7 +777,7 @@ class BasicEntityPersister
      * Hydrate a collection from a given dbal statement.
      *
      * @param array $assoc
-     * @param Doctrine\DBAL\Statement $stmt
+     * @param \Doctrine\DBAL\Statement $stmt
      * @param PersistentCollection $coll
      *
      * @return array
@@ -909,7 +918,6 @@ class BasicEntityPersister
      * @param array $orderBy
      * @param string $baseTableAlias
      * @return string
-     * @todo Rename: _getOrderBySQL
      */
     protected final function _getOrderBySQL(array $orderBy, $baseTableAlias)
     {
@@ -918,6 +926,11 @@ class BasicEntityPersister
         foreach ($orderBy as $fieldName => $orientation) {
             if ( ! isset($this->_class->fieldMappings[$fieldName])) {
                 throw ORMException::unrecognizedField($fieldName);
+            }
+
+            $orientation = strtoupper(trim($orientation));
+            if ($orientation != 'ASC' && $orientation != 'DESC') {
+                throw ORMException::invalidOrientation($this->_class->name, $fieldName);
             }
 
             $tableAlias = isset($this->_class->fieldMappings[$fieldName]['inherited']) ?
@@ -1120,7 +1133,19 @@ class BasicEntityPersister
                 );
             } else {
                 $columns = array_unique($columns);
-                $values = array_fill(0, count($columns), '?');
+
+                $values = array();
+                foreach ($columns AS $column) {
+                    $placeholder = '?';
+
+                    if (isset($this->_columnTypes[$column]) &&
+                        isset($this->_class->fieldMappings[$this->_class->fieldNames[$column]]['requireSQLConversion'])) {
+                        $type = Type::getType($this->_columnTypes[$column]);
+                        $placeholder = $type->convertToDatabaseValueSQL('?', $this->_platform);
+                    }
+
+                    $values[] = $placeholder;
+                }
 
                 $insertSql = 'INSERT INTO ' . $this->_class->getQuotedTableName($this->_platform)
                         . ' (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $values) . ')';
@@ -1159,6 +1184,7 @@ class BasicEntityPersister
                 }
             } else if ($this->_class->generatorType != ClassMetadata::GENERATOR_TYPE_IDENTITY || $this->_class->identifier[0] != $name) {
                 $columns[] = $this->_class->getQuotedColumnName($name, $this->_platform);
+                $this->_columnTypes[$name] = $this->_class->fieldMappings[$name]['type'];
             }
         }
 
@@ -1180,6 +1206,11 @@ class BasicEntityPersister
         $columnAlias = $this->getSQLColumnAlias($class->columnNames[$field]);
 
         $this->_rsm->addFieldResult($alias, $columnAlias, $field);
+
+        if (isset($class->fieldMappings[$field]['requireSQLConversion'])) {
+            $type = Type::getType($class->getTypeOfField($field));
+            $sql = $type->convertToPHPValueSQL($sql, $this->_platform);
+        }
 
         return $sql . ' AS ' . $columnAlias;
     }
@@ -1262,6 +1293,8 @@ class BasicEntityPersister
 
         foreach ($criteria as $field => $value) {
             $conditionSql .= $conditionSql ? ' AND ' : '';
+            
+            $placeholder = '?';
 
             if (isset($this->_class->columnNames[$field])) {
                 $className = (isset($this->_class->fieldMappings[$field]['inherited']))
@@ -1269,6 +1302,11 @@ class BasicEntityPersister
                     : $this->_class->name;
 
                 $conditionSql .= $this->_getSQLTableAlias($className) . '.' . $this->_class->getQuotedColumnName($field, $this->_platform);
+
+                if (isset($this->_class->fieldMappings[$field]['requireSQLConversion'])) {
+                    $type = Type::getType($this->_class->getTypeOfField($field));
+                    $placeholder = $type->convertToDatabaseValueSQL($placeholder, $this->_platform);
+                }
             } else if (isset($this->_class->associationMappings[$field])) {
                 if ( ! $this->_class->associationMappings[$field]['isOwningSide']) {
                     throw ORMException::invalidFindByInverseAssociation($this->_class->name, $field);
@@ -1289,7 +1327,7 @@ class BasicEntityPersister
                 throw ORMException::unrecognizedField($field);
             }
 
-            $conditionSql .= (is_array($value)) ? ' IN (?)' : (($value === null) ? ' IS NULL' : ' = ?');
+            $conditionSql .= (is_array($value)) ? ' IN (?)' : (($value === null) ? ' IS NULL' : ' = ' . $placeholder);
         }
         return $conditionSql;
     }
@@ -1333,7 +1371,7 @@ class BasicEntityPersister
      * @param object $sourceEntity
      * @param int|null $offset
      * @param int|null $limit
-     * @return Doctrine\DBAL\Statement
+     * @return \Doctrine\DBAL\Statement
      */
     private function getOneToManyStatement(array $assoc, $sourceEntity, $offset = null, $limit = null)
     {
@@ -1394,9 +1432,14 @@ class BasicEntityPersister
      * @param mixed $value
      * @return integer
      */
-	private function getType($field, $value)
+    private function getType($field, $value)
     {
-        return $this->getRecursiveType($field, $value, $this->_class);
+        $type = $this->getRecursiveType($field, $this->_class);
+        if (is_array($value)) {
+            $type = Type::getType( $type )->getBindingType();
+            $type += Connection::ARRAY_PARAM_OFFSET;
+        }
+        return $type;
     }
     /**
      * Infer (recursivley) field type to be used by parameter type casting.
@@ -1406,35 +1449,27 @@ class BasicEntityPersister
      * @param mixed $value
      * @return integer
      */
- 	private function getRecursiveType($field, $value, ClassMetadata $class)
-    {
+     private function getRecursiveType($field, ClassMetadata $class)
+     {
         switch (true) {
             case (isset($class->fieldMappings[$field])):
-                $type = Type::getType($class->fieldMappings[$field]['type'])->getBindingType();
+                return $class->fieldMappings[$field]['type'];
                 break;
 
             case (isset($class->associationMappings[$field])):
                 $assoc = $class->associationMappings[$field];
-				
+
                 if (count($assoc['sourceToTargetKeyColumns']) > 1) {
                     throw Query\QueryException::associationPathCompositeKeyNotSupported();
                 }
 
                 $targetClass  = $this->_em->getClassMetadata($assoc['targetEntity']);
-               	// non è sempre vero che posso cercare una pk		
-				$type = $this->getRecursiveType($targetClass->identifier[0], $value, $targetClass);
-                
+                return $this->getRecursiveType($targetClass->identifier[0], $targetClass);
                 break;
 
             default:
-                $type = null;
-        }
-
-        if (is_array($value)) {
-            $type += Connection::ARRAY_PARAM_OFFSET;
-        }
-
-        return $type;
+               return null;
+        }   
     }
 
     /**
@@ -1475,7 +1510,7 @@ class BasicEntityPersister
             }
             $value = reset($idValues);
             if (is_object($value)){
-            	$value = $this->getIndividualValue($value);
+                $value = $this->getIndividualValue($value);
             }
         }
 

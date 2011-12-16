@@ -36,19 +36,19 @@ abstract class AbstractCollectionPersister
     protected $_em;
 
     /**
-     * @var Doctrine\DBAL\Connection
+     * @var \Doctrine\DBAL\Connection
      */
     protected $_conn;
 
     /**
-     * @var Doctrine\ORM\UnitOfWork
+     * @var \Doctrine\ORM\UnitOfWork
      */
     protected $_uow;
 
     /**
      * Initializes a new instance of a class derived from AbstractCollectionPersister.
      *
-     * @param Doctrine\ORM\EntityManager $em
+     * @param \Doctrine\ORM\EntityManager $em
      */
     public function __construct(EntityManager $em)
     {
@@ -149,6 +149,16 @@ abstract class AbstractCollectionPersister
     public function containsKey(PersistentCollection $coll, $key)
     {
         throw new \BadMethodCallException("Checking for existance of a key is not supported by this CollectionPersister.");
+    }
+
+    public function removeElement(PersistentCollection $coll, $element)
+    {
+        throw new \BadMethodCallException("Removing an element is not supported by this CollectionPersister.");
+    }
+
+    public function removeKey(PersistentCollection $coll, $key)
+    {
+        throw new \BadMethodCallException("Removing a key is not supported by this CollectionPersister.");
     }
 
     public function get(PersistentCollection $coll, $index)
