@@ -1533,7 +1533,7 @@ class ClassMetadataInfo implements ClassMetadata
     {
         $sourceFieldName = $assocMapping['fieldName'];
 
-        if (isset($this->associationMappings[$sourceFieldName]) || (isset($this->fieldMappings[$sourceFieldName]) && !$this->fieldMappings[$sourceFieldName]['associationKey'])) {
+        if (isset($this->associationMappings[$sourceFieldName]) || (isset($this->fieldMappings[$sourceFieldName]) && (!isset($this->fieldMappings[$sourceFieldName]['associationKey']) || !$this->fieldMappings[$sourceFieldName]['associationKey']))) {
             throw MappingException::duplicateFieldMapping($this->name, $sourceFieldName);
         }
         
