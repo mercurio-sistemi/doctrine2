@@ -1252,7 +1252,7 @@ class UnitOfWork implements PropertyChangedListener
     public function addToIdentityMap($entity)
     {
         $classMetadata = $this->em->getClassMetadata(get_class($entity));
-        $idHash        = implode(' ', $this->entityIdentifiers[spl_object_hash($entity)]);
+        $idHash        = $this->getHashForEntityIdentifier($this->entityIdentifiers[spl_object_hash($entity)]);
 
         if ($idHash === '') {
             throw new InvalidArgumentException('The given entity has no identity.');
@@ -1304,6 +1304,11 @@ class UnitOfWork implements PropertyChangedListener
 
         if ( ! $id) {
             return self::STATE_NEW;
+        } elseif (count($id) && is_object(reset($id))) {
+            $state = $this->getEntityState(reset($id));
+            if ($state===self::STATE_NEW) {
+                return self::STATE_NEW;    
+            }
         }
 
         switch (true) {
@@ -1362,7 +1367,7 @@ class UnitOfWork implements PropertyChangedListener
     {
         $oid           = spl_object_hash($entity);
         $classMetadata = $this->em->getClassMetadata(get_class($entity));
-        $idHash        = implode(' ', $this->entityIdentifiers[$oid]);
+        $idHash        = $this->getHashForEntityIdentifier($this->entityIdentifiers[$oid]);
 
         if ($idHash === '') {
             throw new InvalidArgumentException('The given entity has no identity.');
@@ -1429,7 +1434,7 @@ class UnitOfWork implements PropertyChangedListener
         }
 
         $classMetadata = $this->em->getClassMetadata(get_class($entity));
-        $idHash        = implode(' ', $this->entityIdentifiers[$oid]);
+        $idHash        = $this->getHashForEntityIdentifier($this->entityIdentifiers[$oid]);
 
         if ($idHash === '') {
             return false;
@@ -2480,6 +2485,29 @@ class UnitOfWork implements PropertyChangedListener
     }
 
     /**
+     * Compute a hash for the given id. Acept also objects ( for association keys)
+     *
+     * @param mixed $id The entity identifier to look for.
+     * @return strine Returns the computed hash.
+     */
+    private function getHashForEntityIdentifier(array $ids){
+        $strings = array();
+        foreach ($ids as $id){
+            if (is_object($id) && $this->em->getMetadataFactory()->hasMetadataFor(get_class($id))) {
+                $oid = spl_object_hash($id);
+                if (isset($this->entityIdentifiers[$oid])) {
+                    $strings[] = $this->getHashForEntityIdentifier($this->entityIdentifiers[$oid]);
+                } else {
+                    $value = $this->em->getClassMetadata(get_class($id))->getIdentifierValues($id);
+                    $strings[] = $this->getHashForEntityIdentifier($value);
+                }
+            } else {
+                $strings[] = $id;
+            }
+        }
+        return implode(' ', $strings);
+    }
+    /**
      * Tries to find an entity with the given identifier in the identity map of
      * this UnitOfWork.
      *
@@ -2490,13 +2518,8 @@ class UnitOfWork implements PropertyChangedListener
      */
     public function tryGetById($id, $rootClassName)
     {
-        $idHash = implode(' ', (array) $id);
-
-        if (isset($this->identityMap[$rootClassName][$idHash])) {
-            return $this->identityMap[$rootClassName][$idHash];
-        }
-
-        return false;
+        $idHash = $this->getHashForEntityIdentifier((array)$id);
+        return $this->tryGetByIdHash($idHash, $rootClassName);
     }
 
     /**
