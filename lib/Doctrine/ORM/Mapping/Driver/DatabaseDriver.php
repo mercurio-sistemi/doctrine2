@@ -61,6 +61,11 @@ class DatabaseDriver implements Driver
      * @var array
      */
     private $classNamesForTables = array();
+    /**
+     * @var array
+     */
+    private $namespaceForPrefix = array();
+   
 
     /**
      * @var array
@@ -73,6 +78,7 @@ class DatabaseDriver implements Driver
      * @var string
      */
     private $namespace;
+    private $schema;
 
 	/**
      * The default repository for the generated entities.
@@ -91,7 +97,12 @@ class DatabaseDriver implements Driver
     {
         $this->_sm = $schemaManager;
     }
-
+    public function setSearchSchema($schema) {
+    	$this->schema = $schema;
+    }
+	public function addNamespaceForTablePrefix($prefix, $ns) {
+		$this->namespaceForPrefix[$prefix]=$ns;
+	}
     /**
      * Set tables manually instead of relying on the reverse engeneering capabilities of SchemaManager.
      *
@@ -121,6 +132,9 @@ class DatabaseDriver implements Driver
         $tables = array();
 
         foreach ($this->_sm->listTableNames() as $tableName) {
+        	if($this->schema  && strpos($tableName, '.')!==false && strpos($tableName, $this->schema )!==0){
+				continue;
+        	}
         	try {
         		$tables[$tableName] = $this->_sm->listTableDetails($tableName);	
         	} catch (\Doctrine\DBAL\DBALException $e) {
@@ -376,7 +390,6 @@ class DatabaseDriver implements Driver
 			}
         }
 
-
         foreach ($this->tables as $tableCandidate){
         	$candidateTableName = $tableCandidate->getName();
 	        if ($this->_sm->getDatabasePlatform()->supportsForeignKeyConstraints()) {
@@ -406,23 +419,18 @@ class DatabaseDriver implements Driver
 
             		$associationMapping['targetEntity'] = $this->getClassNameForTable($candidateTableName);
 
-            		
-            		
-        			$colName = $tableCandidate->getName();
-					if(substr($colName, 0, strlen($tableName))==$tableName && $colName[strlen($tableName)]=="_"){
-						$colName = substr($colName,strlen($tableName)+1);
-					}
+        			$colName = $this->getFancyColumnName($tableCandidate->getName(), $tableName);
 					$associationMapping['fieldName'] = $this->getFieldNameForColumn($tableCandidate->getName(), $colName, true);
 					$associationMapping['mappedBy'] = $this->getFieldNameForColumn($tableCandidate->getName(), $localColumn, true);						
 					// if FKs cols equal to PKs cols then is an one-to-one mapping
 					if(!count(array_diff($fkCols, $primaryKeyColumns)) && !count(array_diff($pkCols, $cols))){
-												
+
 						$associationMapping['cascade'] = array('all');
 	        			$metadata->mapOneToOne($associationMapping);
-	        			
+
 					}else{
 						$primaryKeyColumnsCandidate = $tableCandidate->getPrimaryKey()->getColumns();
-						
+
 	            		if(count($primaryKeyColumnsCandidate)==1){
 	            			$associationMapping['indexBy'] = current($primaryKeyColumnsCandidate);
 	            		}else{
@@ -437,7 +445,7 @@ class DatabaseDriver implements Driver
 						$associationMapping['fieldName'] = $this->pluralize($associationMapping['fieldName']);
 						// fix for multiple association with same name
 						if($metadata->hasAssociation($associationMapping['fieldName'])){
-							$associationMapping['fieldName'] .=ucfirst($associationMapping['mappedBy'] );
+							$associationMapping['fieldName'] .= ucfirst($associationMapping['mappedBy'] );
 						}
 						$metadata->mapOneToMany($associationMapping);
 					}
@@ -445,6 +453,19 @@ class DatabaseDriver implements Driver
         	}
         }
     }
+
+	/**
+	 * 
+	 */
+	protected function getFancyColumnName($colName, $tableName){
+		if(substr($colName, 0, strlen($tableName))==$tableName && $colName[strlen($tableName)]=="_"){
+			$colName = substr($colName,strlen($tableName)+1);
+		}
+		if (($pos = strpos($colName, '.')) !== false){
+			$colName = substr($colName, $pos+1);
+		}		
+		return $colName;
+	}
 
     /**
      * {@inheritdoc}
@@ -464,7 +485,6 @@ class DatabaseDriver implements Driver
     public function getAllClassNames()
     {
         $this->reverseEngineerMappingFromDatabase();
-
         return array_keys($this->classToTableNames);
     }
 
@@ -501,9 +521,16 @@ class DatabaseDriver implements Driver
      */
     private function getClassNameForTable($tableName)
     {
-        if (isset($this->classNamesForTables[$tableName])) {
-            return $this->namespace . $this->classNamesForTables[$tableName];
+    	if (isset($this->classNamesForTables[$tableName])) {
+            return $this->classNamesForTables[$tableName];
         }
+        
+    	foreach ($this->namespaceForPrefix as $prefix => $ns){
+    		if(strpos($tableName, $prefix)===0){
+    			return $this->classNamesForTables[$tableName] = $ns . Inflector::classify(strtolower(substr($tableName, strlen($prefix))));
+    		}
+    	}
+        
 		if(($pos = strpos($tableName, "."))!==false){
 			$table = substr($tableName, $pos+1);
 			$ns = substr($tableName, 0, $pos);
