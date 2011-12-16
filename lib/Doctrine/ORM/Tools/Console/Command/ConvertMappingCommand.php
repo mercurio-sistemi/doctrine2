@@ -83,9 +83,22 @@ class ConvertMappingCommand extends Console\Command\Command
                 'Defines a namespace for the generated entity classes, if converted from database.'
             ),
 			new InputOption(
-                'repo', null, InputOption::VALUE_OPTIONAL,
+                'repo', null, InputOption::VALUE_REQUIRED,
                 'Defines a repository class for the generated entity classes, if converted from database.'
-            ),            
+            ),   
+            new InputOption(
+                'schema', null, InputOption::VALUE_REQUIRED,
+                'Search only in this schema'
+            ),  
+            new InputOption(
+                'generate-only-namespace', null, InputOption::VALUE_REQUIRED,
+                'Defines a wich namespace generate'
+            ),
+            new InputOption(
+                'namespace-table-prefix', null, InputOption::VALUE_REQUIRED| InputOption::VALUE_IS_ARRAY,
+                'Defines a wich namespace generate'
+            )
+                   
         ))
         ->setHelp(<<<EOT
 Convert mapping information between supported formats.
@@ -129,6 +142,14 @@ EOT
             if (($repo = $input->getOption('repo')) !== null) {
                 $databaseDriver->setRepositoryClassName($repo);
             }
+        	 if (($sch = $input->getOption('schema')) !== null) {
+                $databaseDriver->setSearchSchema($sch);
+            }
+            foreach ($input->getOption("namespace-table-prefix") as $prefixtable){
+            	list($prefix, $ns) = explode(":",$prefixtable);
+            	$databaseDriver->addNamespaceForTablePrefix($prefix, $ns);
+            }
+            
         }
 
         $cmf = new DisconnectedClassMetadataFactory();
