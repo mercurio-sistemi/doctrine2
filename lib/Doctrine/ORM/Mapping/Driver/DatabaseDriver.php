@@ -150,7 +150,10 @@ class DatabaseDriver implements Driver
                 $foreignKeys = array();
             }
             $allForeignKeyColumns = array();
+            $foreignTable = null;
+            $sameSchema = true;
             foreach ($foreignKeys AS $foreignKey) {
+				$sameSchema = $sameSchema && strpos($foreignKey->getLocalTableName(), '.')===strpos($foreignKey->getForeignTableName(), '.');
                 $allForeignKeyColumns = array_merge($allForeignKeyColumns, $foreignKey->getLocalColumns());
             }
 
@@ -158,7 +161,7 @@ class DatabaseDriver implements Driver
             sort($pkColumns);
             sort($allForeignKeyColumns);
 
-            if ($pkColumns == $allForeignKeyColumns && count($foreignKeys) == 2 && count($table->getColumns())==count($foreignKeys)) {
+            if ( $pkColumns == $allForeignKeyColumns && count($foreignKeys) == 2 && count($table->getColumns())==count($foreignKeys) && $sameSchema) {
                 $this->manyToManyTables[$tableName] = $table;
             } else {
                 // lower-casing is necessary because of Oracle Uppercase Tablenames,
