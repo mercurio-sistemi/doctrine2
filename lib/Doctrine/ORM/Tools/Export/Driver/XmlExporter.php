@@ -41,7 +41,7 @@ class XmlExporter extends AbstractExporter
      * Converts a single ClassMetadata instance to the exported format
      * and returns it
      *
-     * @param ClassMetadataInfo $metadata 
+     * @param ClassMetadataInfo $metadata
      * @return mixed $exported
      */
     public function exportClassMetadata(ClassMetadataInfo $metadata)
@@ -102,7 +102,7 @@ class XmlExporter extends AbstractExporter
 
         if (isset($metadata->table['indexes'])) {
             $indexesXml = $root->addChild('indexes');
-            
+
             foreach ($metadata->table['indexes'] as $name => $index) {
                 $indexXml = $indexesXml->addChild('index');
                 $indexXml->addAttribute('name', $name);
@@ -112,7 +112,7 @@ class XmlExporter extends AbstractExporter
 
         if (isset($metadata->table['uniqueConstraints'])) {
             $uniqueConstraintsXml = $root->addChild('unique-constraints');
-            
+
             foreach ($metadata->table['uniqueConstraints'] as $unique) {
                 $uniqueConstraintXml = $uniqueConstraintsXml->addChild('unique-constraint');
                 $uniqueConstraintXml->addAttribute('name', $unique['name']);
@@ -121,7 +121,7 @@ class XmlExporter extends AbstractExporter
         }
 
         $fields = $metadata->fieldMappings;
-        
+
         $id = array();
         foreach ($fields as $name => $field) {
             if (isset($field['id']) && $field['id']) {
