@@ -405,9 +405,9 @@ class DatabaseDriver implements Driver
         		$foreignTable = $foreignKey->getForeignTableName();
 
         		if($foreignTable == $tableName && !isset($this->manyToManyTables[$candidateTableName])){
-
-        			// check if we are io same schema
-        	        if(($pos = strpos($candidateTableName, "."))!==false && substr($tableName, 0, $pos)!==substr($candidateTableName, 0, $pos)){
+					
+        			// check if we are in same schema
+        	        if(!$this->canExpandRelations($candidateTableName, $tableName)){
 						continue;
             		}
 
@@ -456,7 +456,27 @@ class DatabaseDriver implements Driver
         	}
         }
     }
-
+    protected $allovedExpandRelations = array();
+    public function canExpandRelations($candidateTableName, $tableName) {
+    	$pos = strpos($candidateTableName, ".");
+    	$posTo = strpos($tableName, ".");
+    	if($pos!==false && $posTo!==false){
+    		
+    		$scFrom = substr($candidateTableName, 0, $pos);
+    		$scTo = substr($tableName, 0, $posTo);
+    		
+	    	if(isset($this->allovedExpandRelations[$scFrom][$scTo])){
+	    		return $this->allovedExpandRelations[$scFrom][$scTo];
+	    	}	
+    	}
+    	
+    	
+    	return ($pos!==false && substr($tableName, 0, $pos)!==substr($candidateTableName, 0, $pos));
+    }
+	public function addExpandRelation($from, $to, $status = true) {
+		$this->allovedExpandRelations[$from][$to]=$status;
+		print_r($this->allovedExpandRelations);
+	}
 	/**
 	 * 
 	 */

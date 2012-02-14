@@ -97,7 +97,12 @@ class ConvertMappingCommand extends Console\Command\Command
             new InputOption(
                 'namespace-table-prefix', null, InputOption::VALUE_REQUIRED| InputOption::VALUE_IS_ARRAY,
                 'Defines a wich namespace generate'
-            )
+            ),
+            new InputOption(
+                'allowed-relations', null, InputOption::VALUE_REQUIRED| InputOption::VALUE_IS_ARRAY,
+                'Defines a wich schema relations can be generated'
+            ),
+           
                    
         ))
         ->setHelp(<<<EOT
@@ -148,6 +153,10 @@ EOT
             foreach ($input->getOption("namespace-table-prefix") as $prefixtable){
             	list($prefix, $ns) = explode(":",$prefixtable);
             	$databaseDriver->addNamespaceForTablePrefix($prefix, $ns);
+            }
+         	foreach ($input->getOption("allowed-relations") as $relation){
+            	list($from, $to) = explode(":",$relation);
+            	$databaseDriver->addExpandRelation($from, $to);
             }
             
         }
