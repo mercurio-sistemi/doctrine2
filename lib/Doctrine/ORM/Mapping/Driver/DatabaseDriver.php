@@ -471,7 +471,7 @@ class DatabaseDriver implements Driver
     	}
     	
     	
-    	return ($pos!==false && substr($tableName, 0, $pos)!==substr($candidateTableName, 0, $pos));
+    	return !($pos!==false && substr($tableName, 0, $pos)!==substr($candidateTableName, 0, $pos));
     }
 	public function addExpandRelation($from, $to, $status = true) {
 		$this->allovedExpandRelations[$from][$to]=$status;
