@@ -151,9 +151,10 @@ class DatabaseDriver implements Driver
             }
             $allForeignKeyColumns = array();
             $foreignTable = null;
-            $sameSchema = true;
+            $canExpand = true;
             foreach ($foreignKeys AS $foreignKey) {
-				$sameSchema = $sameSchema && strpos($foreignKey->getLocalTableName(), '.')===strpos($foreignKey->getForeignTableName(), '.');
+				$canExpand = $canExpand && $this->canExpandRelations($foreignKey->getLocalTableName(), $foreignKey->getForeignTableName());
+				
                 $allForeignKeyColumns = array_merge($allForeignKeyColumns, $foreignKey->getLocalColumns());
             }
 
@@ -161,7 +162,7 @@ class DatabaseDriver implements Driver
             sort($pkColumns);
             sort($allForeignKeyColumns);
 
-            if ( $pkColumns == $allForeignKeyColumns && count($foreignKeys) == 2 && count($table->getColumns())==count($foreignKeys) && $sameSchema) {
+            if ($canExpand && $pkColumns == $allForeignKeyColumns && count($foreignKeys) == 2 && count($table->getColumns())==count($foreignKeys)) {
                 $this->manyToManyTables[$tableName] = $table;
             } else {
                 // lower-casing is necessary because of Oracle Uppercase Tablenames,
@@ -457,21 +458,26 @@ class DatabaseDriver implements Driver
         }
     }
     protected $allovedExpandRelations = array();
-    public function canExpandRelations($candidateTableName, $tableName) {
-    	$pos = strpos($candidateTableName, ".");
-    	$posTo = strpos($tableName, ".");
+    protected function canExpandRelations($fromTable, $toTable) {
+    	$pos = strpos($fromTable, ".");
+    	$posTo = strpos($toTable, ".");
+    	
     	if($pos!==false && $posTo!==false){
     		
-    		$scFrom = substr($candidateTableName, 0, $pos);
-    		$scTo = substr($tableName, 0, $posTo);
-    		
+    		$scFrom = substr($fromTable, 0, $pos);
+    		$scTo = substr($toTable, 0, $posTo);
+    		if($scFrom==$scTo){
+    			return true;
+    		}
 	    	if(isset($this->allovedExpandRelations[$scFrom][$scTo])){
 	    		return $this->allovedExpandRelations[$scFrom][$scTo];
 	    	}	
     	}
+    	if(!strlen($scTo)){
+    		return true;
+    	}
     	
-    	
-    	return !($pos!==false && substr($tableName, 0, $pos)!==substr($candidateTableName, 0, $pos));
+    	return !($pos!==false && substr($toTable, 0, $pos)!==substr($fromTable, 0, $pos));
     }
 	public function addExpandRelation($from, $to, $status = true) {
 		$this->allovedExpandRelations[$from][$to]=$status;
