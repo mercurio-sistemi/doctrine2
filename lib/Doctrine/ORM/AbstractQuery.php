@@ -316,7 +316,7 @@ abstract class AbstractQuery
 
         $this->_queryCacheProfile = $this->_queryCacheProfile
             ? $this->_queryCacheProfile->setLifetime($lifetime)
-            : new QueryCacheProfile($lifetime);
+            : new QueryCacheProfile($lifetime, null, $this->_em->getConfiguration()->getResultCacheImpl());
 
         return $this;
     }
@@ -605,7 +605,7 @@ abstract class AbstractQuery
 
     /**
      * Set the result cache id to use to store the result set cache entry.
-     * If this is not explicitely set by the developer then a hash is automatically
+     * If this is not explicitly set by the developer then a hash is automatically
      * generated for you.
      *
      * @param string $id
@@ -615,7 +615,7 @@ abstract class AbstractQuery
     {
         $this->_queryCacheProfile = $this->_queryCacheProfile
             ? $this->_queryCacheProfile->setCacheKey($id)
-            : new QueryCacheProfile(0, $id);
+            : new QueryCacheProfile(0, $id, $this->_em->getConfiguration()->getResultCacheImpl());
 
         return $this;
     }
