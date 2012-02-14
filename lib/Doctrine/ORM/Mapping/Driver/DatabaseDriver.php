@@ -475,7 +475,6 @@ class DatabaseDriver implements Driver
     }
 	public function addExpandRelation($from, $to, $status = true) {
 		$this->allovedExpandRelations[$from][$to]=$status;
-		print_r($this->allovedExpandRelations);
 	}
 	/**
 	 * 
