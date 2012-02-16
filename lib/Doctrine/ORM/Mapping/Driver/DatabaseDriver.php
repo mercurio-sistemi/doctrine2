@@ -408,7 +408,8 @@ class DatabaseDriver implements Driver
         		if($foreignTable == $tableName && !isset($this->manyToManyTables[$candidateTableName])){
 					
         			// check if we are in same schema
-        	        if(!$this->canExpandRelations($candidateTableName, $tableName)){
+        			
+        	        if(!$this->canExpandRelations($tableName, $candidateTableName)){
 						continue;
             		}
 
@@ -430,7 +431,13 @@ class DatabaseDriver implements Driver
 					if(!count(array_diff($fkCols, $primaryKeyColumns)) && !count(array_diff($pkCols, $cols))){
 
 						$associationMapping['cascade'] = array('all');
-	        			$metadata->mapOneToOne($associationMapping);
+						try {
+							$metadata->mapOneToOne($associationMapping);	
+						} catch (\Doctrine\ORM\Mapping\MappingException $e) {
+							//print_r($metadata);
+							die();
+						}
+	        			
 
 					}else{
 						$primaryKeyColumnsCandidate = $tableCandidate->getPrimaryKey()->getColumns();
@@ -459,13 +466,21 @@ class DatabaseDriver implements Driver
     }
     protected $allovedExpandRelations = array();
     protected function canExpandRelations($fromTable, $toTable) {
+		
     	$pos = strpos($fromTable, ".");
     	$posTo = strpos($toTable, ".");
     	
-    	if($pos!==false && $posTo!==false){
-    		
+    	if($pos===false && $posTo===false){
+    		return true;
+    	}
+    	
+    	if($pos!==false){
     		$scFrom = substr($fromTable, 0, $pos);
+    	}
+    	if($posTo!==false){
     		$scTo = substr($toTable, 0, $posTo);
+    	}
+    	if($pos!==false && $posTo!==false){
     		if($scFrom==$scTo){
     			return true;
     		}
@@ -475,6 +490,9 @@ class DatabaseDriver implements Driver
     	}
     	if(!strlen($scTo)){
     		return true;
+    	}
+    	if(strlen($scTo) && !strlen($scFrom)){
+    		return false;
     	}
     	
     	return !($pos!==false && substr($toTable, 0, $pos)!==substr($fromTable, 0, $pos));
