@@ -132,7 +132,7 @@ class DatabaseDriver implements Driver
         $tables = array();
 
         foreach ($this->_sm->listTableNames() as $tableName) {
-        	if($this->schema  && strpos($tableName, '.')!==false && strpos($tableName, $this->schema )!==0){
+        	if($this->schema  && $this->getTableSchema($tableName)!=$this->schema){
 				continue;
         	}
         	try {
@@ -152,17 +152,20 @@ class DatabaseDriver implements Driver
             $allForeignKeyColumns = array();
             $foreignTable = null;
             $canExpand = true;
+            $manyToManySameSchema = true;
             foreach ($foreignKeys AS $foreignKey) {
 				$canExpand = $canExpand && $this->canExpandRelations($foreignKey->getLocalTableName(), $foreignKey->getForeignTableName());
 				
                 $allForeignKeyColumns = array_merge($allForeignKeyColumns, $foreignKey->getLocalColumns());
+                
+                $manyToManySameSchema = $manyToManySameSchema && ($this->getTableSchema($foreignKey->getLocalTableName()) === $this->getTableSchema($foreignKey->getForeignTableName()));
             }
 
             $pkColumns = $table->getPrimaryKey()->getColumns();
             sort($pkColumns);
             sort($allForeignKeyColumns);
 
-            if ($canExpand && $pkColumns == $allForeignKeyColumns && count($foreignKeys) == 2 && count($table->getColumns())==count($foreignKeys)) {
+            if ($canExpand && $manyToManySameSchema && $pkColumns == $allForeignKeyColumns && count($foreignKeys) == 2 && count($table->getColumns())==count($foreignKeys) ) {
                 $this->manyToManyTables[$tableName] = $table;
             } else {
                 // lower-casing is necessary because of Oracle Uppercase Tablenames,
@@ -466,36 +469,27 @@ class DatabaseDriver implements Driver
     }
     protected $allovedExpandRelations = array();
     protected function canExpandRelations($fromTable, $toTable) {
-		
-    	$pos = strpos($fromTable, ".");
-    	$posTo = strpos($toTable, ".");
-    	
-    	if($pos===false && $posTo===false){
+		$scFrom = $this->getTableSchema($fromTable);
+		$scTo = $this->getTableSchema($toTable);
+
+    	if($scFrom===$scTo || !$scTo){
     		return true;
     	}
-    	
-    	if($pos!==false){
-    		$scFrom = substr($fromTable, 0, $pos);
-    	}
-    	if($posTo!==false){
-    		$scTo = substr($toTable, 0, $posTo);
-    	}
-    	if($pos!==false && $posTo!==false){
-    		if($scFrom==$scTo){
-    			return true;
-    		}
-	    	if(isset($this->allovedExpandRelations[$scFrom][$scTo])){
-	    		return $this->allovedExpandRelations[$scFrom][$scTo];
-	    	}	
-    	}
-    	if(!strlen($scTo)){
-    		return true;
-    	}
-    	if(strlen($scTo) && !strlen($scFrom)){
+    	if($scTo && !$scFrom){
     		return false;
     	}
-    	
-    	return !($pos!==false && substr($toTable, 0, $pos)!==substr($fromTable, 0, $pos));
+    	if(isset($this->allovedExpandRelations[$scFrom][$scTo])){
+    		return $this->allovedExpandRelations[$scFrom][$scTo];
+    	}	
+    	return false;
+    }
+    protected function getTableSchema($fromTable) {
+    	$pos = strpos($fromTable, ".");
+    	if($pos===false){
+    		return null;
+    	}else{
+    		return substr($fromTable, 0, $pos);
+    	}
     }
 	public function addExpandRelation($from, $to, $status = true) {
 		$this->allovedExpandRelations[$from][$to]=$status;
