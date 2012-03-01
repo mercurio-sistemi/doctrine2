@@ -98,7 +98,7 @@ class DatabaseDriver implements Driver
         $this->_sm = $schemaManager;
     }
     public function setSearchSchema($schema) {
-    	$this->schema = $schema;
+    	$this->schema = $schema=="public"?null:$schema;
     }
 	public function addNamespaceForTablePrefix($prefix, $ns) {
 		$this->namespaceForPrefix[$prefix]=$ns;
