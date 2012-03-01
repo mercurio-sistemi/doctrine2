@@ -98,7 +98,7 @@ class DatabaseDriver implements Driver
         $this->_sm = $schemaManager;
     }
     public function setSearchSchema($schema) {
-    	$this->schema = $schema=="public"?null:$schema;
+    	$this->schema = ($schema=="public")?null:$schema;
     }
 	public function addNamespaceForTablePrefix($prefix, $ns) {
 		$this->namespaceForPrefix[$prefix]=$ns;
@@ -132,7 +132,7 @@ class DatabaseDriver implements Driver
         $tables = array();
 
         foreach ($this->_sm->listTableNames() as $tableName) {
-        	if($this->schema  && $this->getTableSchema($tableName)!=$this->schema){
+        	if($this->getTableSchema($tableName)!=$this->schema){
 				continue;
         	}
         	try {
