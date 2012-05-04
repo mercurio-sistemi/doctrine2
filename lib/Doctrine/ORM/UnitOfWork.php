@@ -2401,6 +2401,11 @@ class UnitOfWork implements PropertyChangedListener
                             } else {
                                 $associatedId[$targetClass->fieldNames[$targetColumn]] = $joinColumnValue;
                             }
+                        }else{
+                        	if(count($assoc['targetToSourceKeyColumns'])>1){
+                        		$associatedId = array();
+                        		break;
+                        	}
                         }
                     }
 
