@@ -905,6 +905,33 @@ class BasicFunctionalTest extends \Doctrine\Tests\OrmFunctionalTestCase
         $this->assertInstanceOf('Doctrine\Tests\Models\CMS\CmsUser', $user2);
     }
 
+    public function testMergeNonPersistedProperties()
+    {
+        $user = new CmsUser();
+        $user->username = "beberlei";
+        $user->name = "Benjamin E.";
+        $user->status = 'active';
+        $user->nonPersistedProperty = 'test';
+        $user->nonPersistedPropertyObject = new CmsPhonenumber();
+
+        $managedUser = $this->_em->merge($user);
+        $this->assertEquals('test', $managedUser->nonPersistedProperty);
+        $this->assertSame($user->nonPersistedProperty, $managedUser->nonPersistedProperty);
+        $this->assertSame($user->nonPersistedPropertyObject, $managedUser->nonPersistedPropertyObject);
+
+        $this->assertTrue($user !== $managedUser);
+        $this->assertTrue($this->_em->contains($managedUser));
+
+        $this->_em->flush();
+        $userId = $managedUser->id;
+        $this->_em->clear();
+
+        $user2 = $this->_em->find(get_class($managedUser), $userId);
+        $this->assertNull($user2->nonPersistedProperty);
+        $this->assertNull($user2->nonPersistedPropertyObject);
+        $this->assertEquals('active', $user2->status);
+    }
+
     public function testMergeThrowsExceptionIfEntityWithGeneratedIdentifierDoesNotExist()
     {
         $user = new CmsUser();
@@ -1027,6 +1054,37 @@ class BasicFunctionalTest extends \Doctrine\Tests\OrmFunctionalTestCase
         $this->_em->clear();
 
         $this->assertEquals(\Doctrine\ORM\UnitOfWork::STATE_DETACHED, $unitOfWork->getEntityState($address));
+    }
+
+    public function testFlushManyExplicitEntities()
+    {
+        $userA = new CmsUser;
+        $userA->username = 'UserA';
+        $userA->name = 'UserA';
+
+        $userB = new CmsUser;
+        $userB->username = 'UserB';
+        $userB->name = 'UserB';
+
+        $userC = new CmsUser;
+        $userC->username = 'UserC';
+        $userC->name = 'UserC';
+
+        $this->_em->persist($userA);
+        $this->_em->persist($userB);
+        $this->_em->persist($userC);
+
+        $this->_em->flush(array($userA, $userB, $userB));
+
+        $userC->name = 'changed name';
+
+        $this->_em->flush(array($userA, $userB));
+        $this->_em->refresh($userC);
+
+        $this->assertTrue($userA->id > 0, 'user a has an id');
+        $this->assertTrue($userB->id > 0, 'user b has an id');
+        $this->assertTrue($userC->id > 0, 'user c has an id');
+        $this->assertEquals('UserC', $userC->name, 'name has not changed because we did not flush it');
     }
 
     /**

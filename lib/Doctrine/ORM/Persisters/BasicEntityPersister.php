@@ -498,7 +498,6 @@ class BasicEntityPersister
                 continue;
             }
 
-            $oldVal = $change[0];
             $newVal = $change[1];
 
             if (isset($this->_class->associationMappings[$field])) {
@@ -701,16 +700,6 @@ class BasicEntityPersister
 
         $hydrator = $this->_em->newHydrator(Query::HYDRATE_OBJECT);
         $hydrator->hydrateAll($stmt, $this->_rsm, array(Query::HINT_REFRESH => true));
-
-        if (isset($this->_class->lifecycleCallbacks[Events::postLoad])) {
-            $this->_class->invokeLifecycleCallbacks(Events::postLoad, $entity);
-        }
-
-        $evm = $this->_em->getEventManager();
-
-        if ($evm->hasListeners(Events::postLoad)) {
-            $evm->dispatchEvent(Events::postLoad, new LifecycleEventArgs($entity, $this->_em));
-        }
     }
 
     /**
@@ -724,7 +713,6 @@ class BasicEntityPersister
      */
     public function loadAll(array $criteria = array(), array $orderBy = null, $limit = null, $offset = null)
     {
-        $entities = array();
         $sql = $this->_getSelectEntitiesSQL($criteria, null, 0, $limit, $offset, $orderBy);
         list($params, $types) = $this->expandParameters($criteria);
         $stmt = $this->_conn->executeQuery($sql, $params, $types);
@@ -1008,7 +996,7 @@ class BasicEntityPersister
                 $assocAlias = 'e' . ($eagerAliasCounter++);
                 $this->_rsm->addJoinedEntityResult($assoc['targetEntity'], $assocAlias, 'r', $assocField);
 
-                foreach ($eagerEntity->fieldNames AS $field) {
+                foreach ($eagerEntity->fieldNames as $field) {
                     if ($columnList) $columnList .= ', ';
 
                     $columnList .= $this->_getSelectColumnSQL($field, $eagerEntity, $assocAlias);
@@ -1029,7 +1017,7 @@ class BasicEntityPersister
                     $this->_selectJoinSql .= ' ' . $eagerEntity->getQuotedTableName($this->_platform) . ' ' . $this->_getSQLTableAlias($eagerEntity->name, $assocAlias) .' ON ';
 
                     $tableAlias = $this->_getSQLTableAlias($assoc['targetEntity'], $assocAlias);
-                    foreach ($assoc['sourceToTargetKeyColumns'] AS $sourceCol => $targetCol) {
+                    foreach ($assoc['sourceToTargetKeyColumns'] as $sourceCol => $targetCol) {
                         if ( ! $first) {
                             $this->_selectJoinSql .= ' AND ';
                         }
@@ -1050,7 +1038,7 @@ class BasicEntityPersister
                     $this->_selectJoinSql .= ' ' . $eagerEntity->getQuotedTableName($this->_platform) . ' '
                                            . $this->_getSQLTableAlias($eagerEntity->name, $assocAlias) . ' ON ';
 
-                    foreach ($owningAssoc['sourceToTargetKeyColumns'] AS $sourceCol => $targetCol) {
+                    foreach ($owningAssoc['sourceToTargetKeyColumns'] as $sourceCol => $targetCol) {
                         if ( ! $first) {
                             $this->_selectJoinSql .= ' AND ';
                         }
@@ -1152,12 +1140,13 @@ class BasicEntityPersister
                 $columns = array_unique($columns);
 
                 $values = array();
-                foreach ($columns AS $column) {
+                foreach ($columns as $column) {
                     $placeholder = '?';
 
-                    if (isset($this->_columnTypes[$column]) &&
+                    if (isset($this->_class->fieldNames[$column]) &&
+                        isset($this->_columnTypes[$this->_class->fieldNames[$column]]) &&
                         isset($this->_class->fieldMappings[$this->_class->fieldNames[$column]]['requireSQLConversion'])) {
-                        $type = Type::getType($this->_columnTypes[$column]);
+                        $type = Type::getType($this->_columnTypes[$this->_class->fieldNames[$column]]);
                         $placeholder = $type->convertToDatabaseValueSQL('?', $this->_platform);
                     }
 
@@ -1279,7 +1268,7 @@ class BasicEntityPersister
 
         list($params, $types) = $this->expandParameters($criteria);
 
-        $stmt = $this->_conn->executeQuery($sql, $params, $types);
+        $this->_conn->executeQuery($sql, $params, $types);
     }
 
     /**
@@ -1430,7 +1419,7 @@ class BasicEntityPersister
     {
         $params = $types = array();
 
-        foreach ($criteria AS $field => $value) {
+        foreach ($criteria as $field => $value) {
             if ($value === null) {
                 continue; // skip null values.
             }
@@ -1558,7 +1547,7 @@ class BasicEntityPersister
             $sql .= ' AND ' . $filterSql;
         }
 
-        list($params, $types) = $this->expandParameters($criteria);
+        list($params) = $this->expandParameters($criteria);
 
         return (bool) $this->_conn->fetchColumn($sql, $params);
     }

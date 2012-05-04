@@ -38,6 +38,12 @@ abstract class OrmFunctionalTestCase extends OrmTestCase
     /** Whether the database schema has already been created. */
     protected static $_tablesCreated = array();
 
+    /**
+     * Array of entity class name to their tables that were created.
+     * @var array
+     */
+    protected static $_entityTablesCreated = array();
+
     /** List of model sets and their classes. */
     protected static $_modelSets = array(
         'cms' => array(
@@ -141,6 +147,7 @@ abstract class OrmFunctionalTestCase extends OrmTestCase
             $conn->executeUpdate('DELETE FROM cms_comments');
             $conn->executeUpdate('DELETE FROM cms_articles');
             $conn->executeUpdate('DELETE FROM cms_users');
+            $conn->executeUpdate('DELETE FROM cms_emails');
         }
 
         if (isset($this->_usedModelSets['ecommerce'])) {
@@ -233,6 +240,25 @@ abstract class OrmFunctionalTestCase extends OrmTestCase
         }
 
         $this->_em->clear();
+    }
+
+    protected function setUpEntitySchema(array $classNames)
+    {
+        if ($this->_em === null) {
+            throw new \RuntimeException("EntityManager not set, you have to call parent::setUp() before invoking this method.");
+        }
+
+        $classes = array();
+        foreach ($classNames as $className) {
+            if ( ! isset(static::$_entityTablesCreated[$className])) {
+                static::$_entityTablesCreated[$className] = true;
+                $classes[] = $this->_em->getClassMetadata($className);
+            }
+        }
+
+        if ($classes) {
+            $this->_schemaTool->createSchema($classes);
+        }
     }
 
     /**

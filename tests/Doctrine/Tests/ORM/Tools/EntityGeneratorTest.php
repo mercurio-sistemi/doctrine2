@@ -26,6 +26,7 @@ class EntityGeneratorTest extends \Doctrine\Tests\OrmTestCase
         $this->_generator->setGenerateStubMethods(true);
         $this->_generator->setRegenerateEntityIfExists(false);
         $this->_generator->setUpdateEntityIfExists(true);
+        $this->_generator->setFieldVisibility(EntityGenerator::FIELD_VISIBLE_PROTECTED);
     }
 
     public function tearDown()
@@ -47,6 +48,8 @@ class EntityGeneratorTest extends \Doctrine\Tests\OrmTestCase
         $metadata->customRepositoryClassName = $this->_namespace  . '\EntityGeneratorBookRepository';
 
         $metadata->table['name'] = 'book';
+        $metadata->table['uniqueConstraints']['name_uniq'] = array('columns' => array('name'));
+        $metadata->table['indexes']['status_idx'] = array('columns' => array('status'));
         $metadata->mapField(array('fieldName' => 'name', 'type' => 'string'));
         $metadata->mapField(array('fieldName' => 'status', 'type' => 'string', 'default' => 'published'));
         $metadata->mapField(array('fieldName' => 'id', 'type' => 'integer', 'id' => true));
@@ -133,7 +136,7 @@ class EntityGeneratorTest extends \Doctrine\Tests\OrmTestCase
         $this->assertTrue($reflClass->hasProperty('id'), "Regenerating keeps property 'id'.");
 
         $this->assertTrue($reflClass->hasProperty('test'), "Check for property test failed.");
-        $this->assertTrue($reflClass->getProperty('test')->isPrivate(), "Check for private property test failed.");
+        $this->assertTrue($reflClass->getProperty('test')->isProtected(), "Check for protected property test failed.");
         $this->assertTrue($reflClass->hasMethod('getTest'), "Check for method 'getTest' failed.");
         $this->assertTrue($reflClass->getMethod('getTest')->isPublic(), "Check for public visibility of method 'getTest' failed.");
         $this->assertTrue($reflClass->hasMethod('setTest'), "Check for method 'getTest' failed.");
@@ -218,6 +221,39 @@ class EntityGeneratorTest extends \Doctrine\Tests\OrmTestCase
         $ret = $m->invoke($this->_generator, $php);
         $this->assertEquals($classes, array_keys($p->getValue($this->_generator)));
     }
+
+    /**
+     * @group DDC-1784
+     */
+    public function testGenerateEntityWithSequenceGenerator()
+    {
+        $metadata               = new ClassMetadataInfo($this->_namespace . '\DDC1784Entity');
+        $metadata->namespace    = $this->_namespace;
+        $metadata->mapField(array('fieldName' => 'id', 'type' => 'integer', 'id' => true));
+        $metadata->setIdGeneratorType(ClassMetadataInfo::GENERATOR_TYPE_SEQUENCE);
+        $metadata->setSequenceGeneratorDefinition(array(
+            'sequenceName'      => 'DDC1784_ID_SEQ',
+            'allocationSize'    => 1,
+            'initialValue'      => 2
+        ));
+        $this->_generator->writeEntityClass($metadata, $this->_tmpDir);
+
+        $filename = $this->_tmpDir . DIRECTORY_SEPARATOR
+                  . $this->_namespace . DIRECTORY_SEPARATOR . 'DDC1784Entity.php';
+        
+        $this->assertFileExists($filename);
+        require_once $filename;
+
+
+        $reflection = new \ReflectionProperty($metadata->name, 'id');
+        $docComment = $reflection->getDocComment();
+
+        $this->assertContains('@Id', $docComment);
+        $this->assertContains('@Column(name="id", type="integer")', $docComment);
+        $this->assertContains('@GeneratedValue(strategy="SEQUENCE")', $docComment);
+        $this->assertContains('@SequenceGenerator(sequenceName="DDC1784_ID_SEQ", allocationSize=1, initialValue=2)', $docComment);
+    }
+
 
     public function getParseTokensInEntityFileData()
     {

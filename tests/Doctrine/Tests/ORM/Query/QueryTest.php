@@ -101,4 +101,49 @@ class QueryTest extends \Doctrine\Tests\OrmTestCase
         $q->useResultCache(true);
         $this->assertSame($this->_em->getConfiguration()->getResultCacheImpl(), $q->getQueryCacheProfile()->getResultCacheDriver());
     }
+
+    /**
+     * @expectedException Doctrine\ORM\Query\QueryException
+     **/
+    public function testIterateWithNoDistinctAndWrongSelectClause()
+    {
+        $q = $this->_em->createQuery("select u, a from Doctrine\Tests\Models\CMS\CmsUser u LEFT JOIN u.articles a");
+        $q->iterate();
+    }
+
+    /**
+     * @expectedException Doctrine\ORM\Query\QueryException
+     **/
+    public function testIterateWithNoDistinctAndWithValidSelectClause()
+    {
+        $q = $this->_em->createQuery("select u from Doctrine\Tests\Models\CMS\CmsUser u LEFT JOIN u.articles a");
+        $q->iterate();
+    }
+
+    public function testIterateWithDistinct()
+    {
+        $q = $this->_em->createQuery("SELECT DISTINCT u from Doctrine\Tests\Models\CMS\CmsUser u LEFT JOIN u.articles a");
+        $q->iterate();
+    }
+
+    /**
+     * @group DDC-1697
+     */
+    public function testKeyValueParameters()
+    {
+        $cities = array(
+            0 => "Paris",
+            3 => "Canne",
+            9 => "St Julien"
+        );
+
+        $query  = $this->_em
+                ->createQuery("SELECT a FROM Doctrine\Tests\Models\CMS\CmsAddress a WHERE a.city IN (:cities)")
+                ->setParameter('cities', $cities);
+
+        $parameters = $query->getParameters();
+
+        $this->assertArrayHasKey('cities', $parameters);
+        $this->assertEquals($cities, $parameters['cities']);
+    }
 }
