@@ -2329,6 +2329,9 @@ class UnitOfWork implements PropertyChangedListener
                 $id[$fieldName] = isset($class->associationMappings[$fieldName])
                     ? $data[$class->associationMappings[$fieldName]['joinColumns'][0]['name']]
                     : $data[$fieldName];
+				if($id[$fieldName] instanceof \DateTime){
+					$id[$fieldName] = $id[$fieldName]->format(DATE_W3C);
+				}
             }
 
             $idHash = implode(' ', $id);
@@ -2680,7 +2683,9 @@ class UnitOfWork implements PropertyChangedListener
     private function getHashForEntityIdentifier(array $ids){
         $strings = array();
         foreach ($ids as $id){
-            if (is_object($id) && $this->em->getMetadataFactory()->hasMetadataFor(get_class($id))) {
+        	if ($id instanceof \DateTime) {
+        		$strings[] = $id->format(DATE_W3C);
+        	}elseif(is_object($id) && $this->em->getMetadataFactory()->hasMetadataFor(get_class($id))) {
                 $oid = spl_object_hash($id);
                 if (isset($this->entityIdentifiers[$oid])) {
                     $strings[] = $this->getHashForEntityIdentifier($this->entityIdentifiers[$oid]);
@@ -2986,3 +2991,4 @@ class UnitOfWork implements PropertyChangedListener
         return isset($this->readOnlyObjects[spl_object_hash($object)]);
     }
 }
+
