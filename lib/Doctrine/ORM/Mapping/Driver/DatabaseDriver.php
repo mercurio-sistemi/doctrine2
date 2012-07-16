@@ -132,7 +132,7 @@ class DatabaseDriver implements Driver
         $tables = array();
 
         foreach ($this->_sm->listTableNames() as $tableName) {
-        	if($this->getTableSchema($tableName)!=$this->schema){
+        	if(0 && $this->getTableSchema($tableName)!=$this->schema){
 				continue;
         	}
         	try {
@@ -220,7 +220,9 @@ class DatabaseDriver implements Driver
         foreach ($columns as $column) {
             $fieldMapping = array();
             
-            if (in_array($column->getName(), $allForeignKeyColumns)) {
+            if ($primaryKeyColumns && in_array($column->getName(), $primaryKeyColumns)) {
+                $fieldMapping['id'] = true;
+            } else if (in_array($column->getName(), $allForeignKeyColumns)) {
                 continue;
             }
 
@@ -387,15 +389,53 @@ class DatabaseDriver implements Driver
                     'referencedColumnName' => $fkCols[$i],
                 );
             }
+            
+            
+            $fakeInheritance = $this->isOneToOneDoubeAssociation($localColumn, $tableName, $foreignTable);
+                                   
 			// if FKs cols equal to PKs cols then is an one-to-one mapping
-			if(!count(array_diff($fkCols, $pkCols)) && !count(array_diff($cols, $primaryKeyColumns)) ){
+			if($fakeInheritance || !count(array_diff($fkCols, $pkCols)) && !count(array_diff($cols, $primaryKeyColumns)) ){
 				$associationMapping['fieldName'] = $this->getFieldNameForColumn($tableName, $localColumn, true);
-
+				if($fakeInheritance){
+					echo "Fake inheritance $tableName::$localColumn\n";
+				}
 				$metadata->mapOneToOne($associationMapping);
 			}else{
 				// questo non accade mai
 				$associationMapping['fieldName'] = $this->getFieldNameForColumn($tableName, $localColumn, true);
 				$associationMapping['inversedBy'] = $this->pluralize($this->getFieldNameForColumn($foreignTable, $tableName, true));
+				/*
+				if ($this->_sm->getDatabasePlatform()->supportsForeignKeyConstraints()) {
+		            $foreignKeysReverse = $this->tables[$foreignTable]->getForeignKeys();
+		        } else {
+		            $foreignKeysReverse = array();
+		        }
+
+		        foreach ($foreignKeysReverse as $n => $foreignKeyOneReverse){
+		  
+		        	 if($foreignKeyOneReverse->getForeignTableName()==$tableName){
+		        	 	
+		        	 	$fkColsReverse = $foreignKeyOneReverse->getForeignColumns();
+		        	 	$fkColsLocal = $foreignKeyOneReverse->getColumns();
+		        	 	$fkColLocal = str_replace("_id", "", reset($fkColsLocal));
+		       
+	        	 	
+		        	 	if(!count(array_diff($fkColsReverse, $primaryKeyColumns)) && $fkColLocal==$tableName){
+							continue 2;
+		        	 		echo "Skipping $tableName looking for ";
+				        	echo ($foreignKeyOneReverse->getLocalTableName());
+		        	 		echo " >> ";
+		        	 		echo $foreignKeyOneReverse->getForeignTableName();
+		        	 		echo " ($n) ";
+		        	 		echo "\n";
+	
+				        	continue 2;
+							        	 			
+		        	 	}
+		        	
+		        	 }		        
+		        }
+                */
 				$metadata->mapManyToOne($associationMapping);
 			}
         }
@@ -435,17 +475,24 @@ class DatabaseDriver implements Driver
 					$associationMapping['mappedBy'] = $this->getFieldNameForColumn($tableCandidate->getName(), $localColumn, true);						
 					// if FKs cols equal to PKs cols then is an one-to-one mapping
 					if(!count(array_diff($fkCols, $primaryKeyColumns)) && !count(array_diff($pkCols, $cols))){
-
 						$associationMapping['cascade'] = array('all');
 						try {
-							$metadata->mapOneToOne($associationMapping);	
+							
+							$metadata->mapOneToOne($associationMapping);
+							
 						} catch (\Doctrine\ORM\Mapping\MappingException $e) {
-							//print_r($metadata);
-							die();
+							echo "Duplicate: ";
+							print_r($associationMapping);
+							//die("ERROR already mapped");
 						}
 	        			
 
 					}else{
+						
+						if($this->isOneToOneDoubeAssociation($localColumn, $candidateTableName, $foreignTable)){
+							continue;
+						}
+						
 						$primaryKeyColumnsCandidate = $tableCandidate->getPrimaryKey()->getColumns();
 
 	            		if(count($primaryKeyColumnsCandidate)==1){
@@ -464,11 +511,35 @@ class DatabaseDriver implements Driver
 						if($metadata->hasAssociation($associationMapping['fieldName'])){
 							$associationMapping['fieldName'] .= ucfirst($associationMapping['mappedBy'] );
 						}
+							
+						
 						$metadata->mapOneToMany($associationMapping);
 					}
         		}
         	}
         }
+    }
+    protected function isOneToOneDoubeAssociation($columnName, $tableName, $referencedTable) {
+    	if ($this->_sm->getDatabasePlatform()->supportsForeignKeyConstraints()) {
+    		return false;
+    	}
+    	$col = str_replace("_id", "", $columnName);
+    	
+    	$pkCols = $this->tables[$referencedTable]->getPrimaryKey()->getColumns();
+    	
+		if ($col==$referencedTable){
+			$foreignKeysReverse = $this->tables[$referencedTable]->getForeignKeys();
+		    foreach ($foreignKeysReverse as $n => $foreignKeyOneReverse){
+			  
+		    	if($foreignKeyOneReverse->getForeignTableName()==$tableName){
+		        	$fkColsLocal = $foreignKeyOneReverse->getColumns();
+			        if (!count(array_diff($fkColsLocal, $pkCols))){
+		            	return true;
+		            }
+			    }
+           	}
+       	}
+       	return false;
     }
     protected $allovedExpandRelations = array();
     protected function canExpandRelations($fromTable, $toTable) {
