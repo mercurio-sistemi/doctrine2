@@ -259,14 +259,15 @@ abstract class AbstractQuery
                 "You should split the parameter into the explicit fields and bind them seperately."
             );
         }
-
-        $values = ($this->_em->getUnitOfWork()->getEntityState($value) === UnitOfWork::STATE_MANAGED)
+        $state = $this->_em->getUnitOfWork()->getEntityState($value);
+        
+        $values = ($state === UnitOfWork::STATE_MANAGED)
             ? $this->_em->getUnitOfWork()->getEntityIdentifier($value)
             : $class->getIdentifierValues($value);
 
         $value = $values[$class->getSingleIdentifierFieldName()];
 
-        if ( ! $value) {
+        if ( ! $value && $state !== UnitOfWork::STATE_NEW) {
             throw new \InvalidArgumentException(
                 "Binding entities to query parameters only allowed for entities that have an identifier."
             );
