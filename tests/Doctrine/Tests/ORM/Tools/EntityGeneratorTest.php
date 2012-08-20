@@ -11,6 +11,10 @@ require_once __DIR__ . '/../../TestInit.php';
 
 class EntityGeneratorTest extends \Doctrine\Tests\OrmTestCase
 {
+
+    /**
+     * @var EntityGenerator
+     */
     private $_generator;
     private $_tmpDir;
     private $_namespace;
@@ -75,6 +79,24 @@ class EntityGeneratorTest extends \Doctrine\Tests\OrmTestCase
         return $metadata;
     }
 
+    private function generateEntityTypeFixture(array $field)
+    {
+        $metadata = new ClassMetadataInfo($this->_namespace . '\EntityType');
+        $metadata->namespace = $this->_namespace;
+
+        $metadata->table['name'] = 'entity_type';
+        $metadata->mapField(array('fieldName' => 'id', 'type' => 'integer', 'id' => true));
+        $metadata->setIdGeneratorType(ClassMetadataInfo::GENERATOR_TYPE_AUTO);
+
+        $name  = $field['fieldName'];
+        $type  = $field['dbType'];
+        $metadata->mapField(array('fieldName' => $name, 'type' => $type));
+
+        $this->_generator->writeEntityClass($metadata, $this->_tmpDir);
+
+        return $metadata;
+    }
+
     /**
      * @param  ClassMetadataInfo $metadata
      * @return EntityGeneratorBook
@@ -93,7 +115,6 @@ class EntityGeneratorTest extends \Doctrine\Tests\OrmTestCase
         $metadata = $this->generateBookEntityFixture();
 
         $book = $this->newInstance($metadata);
-
         $this->assertTrue(class_exists($metadata->name), "Class does not exist.");
         $this->assertTrue(method_exists($metadata->namespace . '\EntityGeneratorBook', '__construct'), "EntityGeneratorBook::__construct() missing.");
         $this->assertTrue(method_exists($metadata->namespace . '\EntityGeneratorBook', 'getId'), "EntityGeneratorBook::getId() missing.");
@@ -102,7 +123,8 @@ class EntityGeneratorTest extends \Doctrine\Tests\OrmTestCase
         $this->assertTrue(method_exists($metadata->namespace . '\EntityGeneratorBook', 'setAuthor'), "EntityGeneratorBook::setAuthor() missing.");
         $this->assertTrue(method_exists($metadata->namespace . '\EntityGeneratorBook', 'getAuthor'), "EntityGeneratorBook::getAuthor() missing.");
         $this->assertTrue(method_exists($metadata->namespace . '\EntityGeneratorBook', 'getComments'), "EntityGeneratorBook::getComments() missing.");
-        $this->assertTrue(method_exists($metadata->namespace . '\EntityGeneratorBook', 'addEntityGeneratorComment'), "EntityGeneratorBook::addEntityGeneratorComment() missing.");
+        $this->assertTrue(method_exists($metadata->namespace . '\EntityGeneratorBook', 'addComment'), "EntityGeneratorBook::addComment() missing.");
+        $this->assertTrue(method_exists($metadata->namespace . '\EntityGeneratorBook', 'removeComment'), "EntityGeneratorBook::removeComment() missing.");
 
         $this->assertEquals('published', $book->getStatus());
 
@@ -114,9 +136,11 @@ class EntityGeneratorTest extends \Doctrine\Tests\OrmTestCase
         $this->assertEquals($author, $book->getAuthor());
 
         $comment = new EntityGeneratorComment();
-        $book->addEntityGeneratorComment($comment);
+        $book->addComment($comment);
         $this->assertInstanceOf('Doctrine\Common\Collections\ArrayCollection', $book->getComments());
         $this->assertEquals(new \Doctrine\Common\Collections\ArrayCollection(array($comment)), $book->getComments());
+        $book->removeComment($comment);
+        $this->assertEquals(new \Doctrine\Common\Collections\ArrayCollection(array()), $book->getComments());
     }
 
     public function testEntityUpdatingWorks()
@@ -212,10 +236,10 @@ class EntityGeneratorTest extends \Doctrine\Tests\OrmTestCase
     public function testParseTokensInEntityFile($php, $classes)
     {
         $r = new \ReflectionObject($this->_generator);
-        $m = $r->getMethod('_parseTokensInEntityFile');
+        $m = $r->getMethod('parseTokensInEntityFile');
         $m->setAccessible(true);
 
-        $p = $r->getProperty('_staticReflection');
+        $p = $r->getProperty('staticReflection');
         $p->setAccessible(true);
 
         $ret = $m->invoke($this->_generator, $php);
@@ -254,6 +278,104 @@ class EntityGeneratorTest extends \Doctrine\Tests\OrmTestCase
         $this->assertContains('@SequenceGenerator(sequenceName="DDC1784_ID_SEQ", allocationSize=1, initialValue=2)', $docComment);
     }
 
+    /**
+     * @dataProvider getEntityTypeAliasDataProvider
+     *
+     * @group DDC-1694
+     */
+    public function testEntityTypeAlias(array $field)
+    {
+        $metadata   = $this->generateEntityTypeFixture($field);
+        $path       = $this->_tmpDir . '/'. $this->_namespace . '/EntityType.php';
+
+        $this->assertFileExists($path);
+        require_once $path;
+
+        $entity     = new $metadata->name;
+        $reflClass  = new \ReflectionClass($metadata->name);
+        
+        $type   = $field['phpType'];
+        $name   = $field['fieldName'];
+        $value  = $field['value'];
+        $getter = "get" . ucfirst($name);
+        $setter = "set" . ucfirst($name);
+
+        $this->assertPhpDocVarType($type, $reflClass->getProperty($name));
+        $this->assertPhpDocParamType($type, $reflClass->getMethod($setter));
+        $this->assertPhpDocReturnType($type, $reflClass->getMethod($getter));
+
+        $this->assertSame($entity, $entity->{$setter}($value));
+        $this->assertEquals($value, $entity->{$getter}());
+    }
+
+    /**
+     * @return array
+     */
+    public function getEntityTypeAliasDataProvider()
+    {
+        return array(
+            array(array(
+                'fieldName' => 'datetimetz',
+                'phpType' => '\\DateTime',
+                'dbType' => 'datetimetz',
+                'value' => new \DateTime
+            )),
+            array(array(
+                'fieldName' => 'datetime',
+                'phpType' => '\\DateTime',
+                'dbType' => 'datetime',
+                'value' => new \DateTime
+            )),
+            array(array(
+                'fieldName' => 'date', 
+                'phpType' => '\\DateTime',
+                'dbType' => 'date',
+                'value' => new \DateTime
+            )),
+            array(array(
+                'fieldName' => 'time', 
+                'phpType' => '\DateTime',
+                'dbType' => 'time',
+                'value' => new \DateTime
+            )),
+            array(array(
+                'fieldName' => 'object', 
+                'phpType' => '\stdClass',
+                'dbType' => 'object',
+                'value' => new \stdClass()
+            )),
+            array(array(
+                'fieldName' => 'bigint', 
+                'phpType' => 'integer',
+                'dbType' => 'bigint',
+                'value' => 11
+            )),
+            array(array(
+                'fieldName' => 'smallint', 
+                'phpType' => 'integer',
+                'dbType' => 'smallint',
+                'value' => 22
+            )),
+            array(array(
+                'fieldName' => 'text', 
+                'phpType' => 'string',
+                'dbType' => 'text',
+                'value' => 'text'
+            )),
+            array(array(
+                'fieldName' => 'blob', 
+                'phpType' => 'string',
+                'dbType' => 'blob',
+                'value' => 'blob'
+            )),
+            array(array(
+                'fieldName' => 'decimal',
+                'phpType' => 'float',
+                'dbType' => 'decimal',
+                'value' => 33.33
+            ),
+        ));
+    }
 
     public function getParseTokensInEntityFileData()
     {
@@ -285,6 +407,36 @@ class
                 array('Foo\Bar\Baz'),
             ),
         );
+    }
+
+    /**
+     * @param string $type
+     * @param \ReflectionProperty $property
+     */
+    private function assertPhpDocVarType($type, \ReflectionProperty $property)
+    {
+        $this->assertEquals(1, preg_match('/@var\s+([^\s]+)/',$property->getDocComment(), $matches));
+        $this->assertEquals($type, $matches[1]);
+    }
+
+    /**
+     * @param string $type
+     * @param \ReflectionProperty $method
+     */
+    private function assertPhpDocReturnType($type, \ReflectionMethod $method)
+    {
+        $this->assertEquals(1, preg_match('/@return\s+([^\s]+)/', $method->getDocComment(), $matches));
+        $this->assertEquals($type, $matches[1]);
+    }
+
+    /**
+     * @param string $type
+     * @param \ReflectionProperty $method
+     */
+    private function assertPhpDocParamType($type, \ReflectionMethod $method)
+    {
+        $this->assertEquals(1, preg_match('/@param\s+([^\s]+)/', $method->getDocComment(), $matches));
+        $this->assertEquals($type, $matches[1]);
     }
 }
 

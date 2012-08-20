@@ -87,18 +87,28 @@ class CountOutputWalker extends SqlWalker
             throw new \RuntimeException("Cannot count query which selects two FROM components, cannot make distinction");
         }
 
-        $rootClass = $from[0]->rangeVariableDeclaration->abstractSchemaName;
-        $rootAlias = $from[0]->rangeVariableDeclaration->aliasIdentificationVariable;
-
-        // Get the identity properties from the metadata
-        $rootIdentifier = $this->queryComponents[$rootAlias]['metadata']->identifier;
+        $rootAlias      = $from[0]->rangeVariableDeclaration->aliasIdentificationVariable;
+        $rootClass      = $this->queryComponents[$rootAlias]['metadata'];
+        $rootIdentifier = $rootClass->identifier;
 
         // For every identifier, find out the SQL alias by combing through the ResultSetMapping
         $sqlIdentifier = array();
         foreach ($rootIdentifier as $property) {
-            foreach (array_keys($this->rsm->fieldMappings, $property) as $alias) {
-                if ($this->rsm->columnOwnerMap[$alias] == $rootAlias) {
-                    $sqlIdentifier[$property] = $alias;
+            if (isset($rootClass->fieldMappings[$property])) {
+                foreach (array_keys($this->rsm->fieldMappings, $property) as $alias) {
+                    if ($this->rsm->columnOwnerMap[$alias] == $rootAlias) {
+                        $sqlIdentifier[$property] = $alias;
+                    }
+                }
+            }
+
+            if (isset($rootClass->associationMappings[$property])) {
+                $joinColumn = $rootClass->associationMappings[$property]['joinColumns'][0]['name'];
+
+                foreach (array_keys($this->rsm->metaMappings, $joinColumn) as $alias) {
+                    if ($this->rsm->columnOwnerMap[$alias] == $rootAlias) {
+                        $sqlIdentifier[$property] = $alias;
+                    }
                 }
             }
         }
@@ -111,7 +121,7 @@ class CountOutputWalker extends SqlWalker
         }
 
         // Build the counter query
-        return sprintf('SELECT %s AS _dctrn_count FROM (SELECT DISTINCT %s FROM (%s) AS _dctrn_result) AS _dctrn_table',
+        return sprintf('SELECT %s AS dctrn_count FROM (SELECT DISTINCT %s FROM (%s) dctrn_result) dctrn_table',
             $this->platform->getCountExpression('*'),
             implode(', ', $sqlIdentifier),
             $sql

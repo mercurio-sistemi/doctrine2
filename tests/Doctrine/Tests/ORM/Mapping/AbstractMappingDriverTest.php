@@ -334,7 +334,7 @@ abstract class AbstractMappingDriverTest extends \Doctrine\Tests\OrmTestCase
         $class = $this->createClassMetadata('Doctrine\Tests\ORM\Mapping\Animal');
 
         $this->assertEquals(
-            array('name' => 'dtype', 'type' => 'string', 'length' => 255, 'fieldName' => 'dtype'),
+            array('name' => 'discr', 'type' => 'string', 'length' => '32', 'fieldName' => 'discr', 'columnDefinition' => null),
             $class->discriminatorColumn
         );
     }
@@ -483,6 +483,14 @@ abstract class AbstractMappingDriverTest extends \Doctrine\Tests\OrmTestCase
         $factory = $this->createClassMetadataFactory();
         
         $factory->getMetadataFor('Doctrine\Tests\Models\DDC889\DDC889Entity');
+    }
+
+    public function testNamedQuery()
+    {
+        $driver = $this->_loadDriver();
+        $class = $this->createClassMetadata(__NAMESPACE__.'\User');
+
+        $this->assertCount(1, $class->getNamedQueries(), sprintf("Named queries not processed correctly by driver %s", get_class($driver)));
     }
 
     /**
@@ -742,6 +750,7 @@ abstract class AbstractMappingDriverTest extends \Doctrine\Tests\OrmTestCase
  *  indexes={@Index(name="name_idx", columns={"name"}), @Index(name="0", columns={"user_email"})},
  *  options={"foo": "bar", "baz": {"key": "val"}}
  * )
+ * @NamedQueries({@NamedQuery(name="all", query="SELECT u FROM __CLASS__ u")})
  */
 class User
 {
@@ -921,6 +930,10 @@ class User
                 'allocationSize' => 100,
                 'initialValue' => 1,
             ));
+        $metadata->addNamedQuery(array(
+                'name' => 'all',
+                'query' => 'SELECT u FROM __CLASS__ u'
+            ));
     }
 }
 
@@ -928,6 +941,7 @@ class User
  * @Entity
  * @InheritanceType("SINGLE_TABLE")
  * @DiscriminatorMap({"cat" = "Cat", "dog" = "Dog"})
+ * @DiscriminatorColumn(name="discr", length=32, type="string")
  */
 abstract class Animal
 {

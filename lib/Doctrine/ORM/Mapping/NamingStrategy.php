@@ -14,7 +14,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * This software consists of voluntary contributions made by many individuals
- * and is licensed under the LGPL. For more information, see
+ * and is licensed under the MIT license. For more information, see
  * <http://www.doctrine-project.org>.
  */
 
@@ -23,7 +23,7 @@ namespace Doctrine\ORM\Mapping;
 /**
  * A set of rules for determining the physical column and table names
  *
- * @license http://www.opensource.org/licenses/lgpl-license.php LGPL
+ * 
  * @link    www.doctrine-project.org
  * @since   2.3
  * @author  Fabio B. Silva <fabio.bat.silva@gmail.com>
@@ -42,9 +42,10 @@ interface NamingStrategy
      * Return a column name for a property
      *
      * @param string $propertyName A property
+     * @param string $className The fully-qualified class name
      * @return string A column name
      */
-    function propertyToColumnName($propertyName);
+    function propertyToColumnName($propertyName, $className = null);
 
     /**
      * Return the default reference column name

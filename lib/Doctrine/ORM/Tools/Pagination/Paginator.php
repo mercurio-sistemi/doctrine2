@@ -13,7 +13,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * This software consists of voluntary contributions made by many individuals
- * and is licensed under the LGPL. For more information, see
+ * and is licensed under the MIT license. For more information, see
  * <http://www.doctrine-project.org>.
  */
 
@@ -127,8 +127,10 @@ class Paginator implements \Countable, \IteratorAggregate
             }
 
             if ($this->useOutputWalker($countQuery)) {
+                $platform = $countQuery->getEntityManager()->getConnection()->getDatabasePlatform(); // law of demeter win
+
                 $rsm = new ResultSetMapping();
-                $rsm->addScalarResult('_dctrn_count', 'count');
+                $rsm->addScalarResult($platform->getSQLResultCasing('dctrn_count'), 'count');
 
                 $countQuery->setHint(Query::HINT_CUSTOM_OUTPUT_WALKER, 'Doctrine\ORM\Tools\Pagination\CountOutputWalker');
                 $countQuery->setResultSetMapping($rsm);
@@ -206,7 +208,9 @@ class Paginator implements \Countable, \IteratorAggregate
     {
         /* @var $cloneQuery Query */
         $cloneQuery = clone $query;
-        $cloneQuery->setParameters($query->getParameters());
+
+        $cloneQuery->setParameters(clone $query->getParameters());
+
         foreach ($query->getHints() as $name => $value) {
             $cloneQuery->setHint($name, $value);
         }

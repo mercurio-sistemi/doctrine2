@@ -88,6 +88,7 @@ abstract class OrmFunctionalTestCase extends OrmTestCase
             'Doctrine\Tests\Models\Routing\RoutingRouteBooking',
         ),
         'navigation' => array(
+            'Doctrine\Tests\Models\Navigation\NavUser',
             'Doctrine\Tests\Models\Navigation\NavCountry',
             'Doctrine\Tests\Models\Navigation\NavPhotos',
             'Doctrine\Tests\Models\Navigation\NavTour',
@@ -208,7 +209,6 @@ abstract class OrmFunctionalTestCase extends OrmTestCase
             $conn->executeUpdate('DELETE FROM Directory');
         }
         if (isset($this->_usedModelSets['ddc117'])) {
-            return;
             $conn->executeUpdate('DELETE FROM ddc117editor_ddc117translation');
             $conn->executeUpdate('DELETE FROM DDC117Editor');
             $conn->executeUpdate('DELETE FROM DDC117ApproveChanges');
@@ -343,7 +343,7 @@ abstract class OrmFunctionalTestCase extends OrmTestCase
         $config->setProxyDir(__DIR__ . '/Proxies');
         $config->setProxyNamespace('Doctrine\Tests\Proxies');
 
-        $config->setMetadataDriverImpl($config->newDefaultAnnotationDriver());
+        $config->setMetadataDriverImpl($config->newDefaultAnnotationDriver(array(), true));
 
         $conn = static::$_sharedConn;
         $conn->getConfiguration()->setSQLLogger($this->_sqlLoggerStack);

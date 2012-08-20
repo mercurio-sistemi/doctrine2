@@ -2,11 +2,15 @@
 
 namespace Doctrine\Tests\ORM\Functional;
 
+use Doctrine\Common\Collections\ArrayCollection;
+
 use Doctrine\DBAL\Connection;
 use Doctrine\Tests\Models\CMS\CmsUser,
-    Doctrine\Tests\Models\CMS\CmsArticle;
+    Doctrine\Tests\Models\CMS\CmsArticle,
+    Doctrine\Tests\Models\CMS\CmsPhonenumber;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Query;
+use Doctrine\ORM\Query\Parameter;
 
 require_once __DIR__ . '/../../TestInit.php';
 
@@ -151,7 +155,20 @@ class QueryTest extends \Doctrine\Tests\OrmFunctionalTestCase
     public function testSetParameters()
     {
         $q = $this->_em->createQuery('SELECT u FROM Doctrine\Tests\Models\CMS\CmsUser u WHERE u.name = ?1 AND u.status = ?2');
+
+        $parameters = new ArrayCollection();
+        $parameters->add(new Parameter(1, 'jwage'));
+        $parameters->add(new Parameter(2, 'active'));
+
+        $q->setParameters($parameters);
+        $users = $q->getResult();
+    }
+
+    public function testSetParametersBackwardsCompatible()
+    {
+        $q = $this->_em->createQuery('SELECT u FROM Doctrine\Tests\Models\CMS\CmsUser u WHERE u.name = ?1 AND u.status = ?2');
         $q->setParameters(array(1 => 'jwage', 2 => 'active'));
+        
         $users = $q->getResult();
     }
 
@@ -176,7 +193,7 @@ class QueryTest extends \Doctrine\Tests\OrmFunctionalTestCase
         $articleId = $article1->id;
 
         $query = $this->_em->createQuery("select a from Doctrine\Tests\Models\CMS\CmsArticle a WHERE a.topic = ?1");
-        $articles = $query->iterate(array(1 => 'Doctrine 2'), Query::HYDRATE_ARRAY);
+        $articles = $query->iterate(new ArrayCollection(array(new Parameter(1, 'Doctrine 2'))), Query::HYDRATE_ARRAY);
 
         $found = array();
         foreach ($articles AS $article) {
@@ -225,6 +242,42 @@ class QueryTest extends \Doctrine\Tests\OrmFunctionalTestCase
 
         $this->_em->flush();
         $this->_em->clear();
+    }
+
+    public function testIterateResultClearEveryCycle()
+    {
+        $article1 = new CmsArticle;
+        $article1->topic = "Doctrine 2";
+        $article1->text = "This is an introduction to Doctrine 2.";
+
+        $article2 = new CmsArticle;
+        $article2->topic = "Symfony 2";
+        $article2->text = "This is an introduction to Symfony 2.";
+
+        $this->_em->persist($article1);
+        $this->_em->persist($article2);
+
+        $this->_em->flush();
+        $this->_em->clear();
+
+        $query    = $this->_em->createQuery("select a from Doctrine\Tests\Models\CMS\CmsArticle a");
+        $articles = $query->iterate();
+
+        $iteratedCount = 0;
+        $topics = array();
+        foreach($articles AS $row) {
+            $article  = $row[0];
+            $topics[] = $article->topic;
+
+            $this->_em->clear();
+
+            $iteratedCount++;
+        }
+
+        $this->assertEquals(array("Doctrine 2", "Symfony 2"), $topics);
+        $this->assertEquals(2, $iteratedCount);
+
+        $this->_em->flush();
     }
 
     /**
@@ -484,10 +537,10 @@ class QueryTest extends \Doctrine\Tests\OrmFunctionalTestCase
         $this->_em->clear();
 
         $query = $this->_em->createQuery("SELECT u FROM Doctrine\Tests\Models\CMS\CmsUser u WHERE u.status = :a AND u.id IN (:b)");
-        $query->setParameters(array(
-            'b' => array($user1->id, $user2->id, $user3->id),
-            'a' => 'developer',
-        ));
+        $query->setParameters(new ArrayCollection(array(
+            new Parameter('b', array($user1->id, $user2->id, $user3->id)),
+            new Parameter('a', 'developer')
+        )));
         $result = $query->getResult();
 
         $this->assertEquals(3, count($result));
@@ -603,7 +656,7 @@ class QueryTest extends \Doctrine\Tests\OrmFunctionalTestCase
     /**
      * @group DDC-1651
      */
-    public function testSetParameterBindingSingleIdentifierObjectConverted()
+    public function testSetParameterBindingSingleIdentifierObject()
     {
         $userC = new CmsUser;
         $userC->name = 'Jonathan';
@@ -617,6 +670,114 @@ class QueryTest extends \Doctrine\Tests\OrmFunctionalTestCase
         $q = $this->_em->createQuery("SELECT DISTINCT u from Doctrine\Tests\Models\CMS\CmsUser u WHERE u.id = ?1");
         $q->setParameter(1, $userC);
 
-        $this->assertEquals($userC->id, $q->getParameter(1));
+        $this->assertEquals($userC, $q->getParameter(1)->getValue());
+
+        // Parameter is not converted before, but it should be converted during execution. Test should not fail here
+        $q->getResult();
+    }
+
+
+    /**
+     * @group DDC-1822
+     */
+    public function testUnexpectedResultException()
+    {
+        $dql            = "SELECT u FROM Doctrine\Tests\Models\CMS\CmsUser u";
+        $u1             = new CmsUser;
+        $u2             = new CmsUser;
+        $u1->name       = 'Fabio B. Silva';
+        $u1->username   = 'FabioBatSilva';
+        $u1->status     = 'developer';
+        $u2->name       = 'Test';
+        $u2->username   = 'test';
+        $u2->status     = 'tester';
+
+        try {
+            $this->_em->createQuery($dql)->getSingleResult();
+            $this->fail('Expected exception "\Doctrine\ORM\NoResultException".');
+        } catch (\Doctrine\ORM\UnexpectedResultException $exc) {
+            $this->assertInstanceOf('\Doctrine\ORM\NoResultException', $exc);
+        }
+
+
+        $this->_em->persist($u1);
+        $this->_em->persist($u2);
+        $this->_em->flush();
+        $this->_em->clear();
+
+        try {
+            $this->_em->createQuery($dql)->getSingleResult();
+            $this->fail('Expected exception "\Doctrine\ORM\NonUniqueResultException".');
+        } catch (\Doctrine\ORM\UnexpectedResultException $exc) {
+            $this->assertInstanceOf('\Doctrine\ORM\NonUniqueResultException', $exc);
+        }
+    }
+
+    public function testMultipleJoinComponentsUsingInnerJoin()
+    {
+        $userA = new CmsUser;
+        $userA->name = 'Benjamin';
+        $userA->username = 'beberlei';
+        $userA->status = 'developer';
+
+        $phonenumberA = new CmsPhonenumber;
+        $phonenumberA->phonenumber = '111111';
+        $userA->addPhonenumber($phonenumberA);
+
+        $userB = new CmsUser;
+        $userB->name = 'Alexander';
+        $userB->username = 'asm89';
+        $userB->status = 'developer';
+
+        $this->_em->persist($userA);
+        $this->_em->persist($userB);
+        $this->_em->flush();
+        $this->_em->clear();
+
+        $query = $this->_em->createQuery("
+            SELECT u, p
+              FROM Doctrine\Tests\Models\CMS\CmsUser u
+             INNER JOIN Doctrine\Tests\Models\CMS\CmsPhonenumber p WITH u = p.user
+        ");
+        $users = $query->execute();
+
+        $this->assertEquals(2, count($users));
+        $this->assertInstanceOf('Doctrine\Tests\Models\CMS\CmsUser', $users[0]);
+        $this->assertInstanceOf('Doctrine\Tests\Models\CMS\CmsPhonenumber', $users[1]);
+    }
+
+    public function testMultipleJoinComponentsUsingLeftJoin()
+    {
+        $userA = new CmsUser;
+        $userA->name = 'Benjamin';
+        $userA->username = 'beberlei';
+        $userA->status = 'developer';
+
+        $phonenumberA = new CmsPhonenumber;
+        $phonenumberA->phonenumber = '111111';
+        $userA->addPhonenumber($phonenumberA);
+
+        $userB = new CmsUser;
+        $userB->name = 'Alexander';
+        $userB->username = 'asm89';
+        $userB->status = 'developer';
+
+        $this->_em->persist($userA);
+        $this->_em->persist($userB);
+        $this->_em->flush();
+        $this->_em->clear();
+
+        $query = $this->_em->createQuery("
+            SELECT u, p
+              FROM Doctrine\Tests\Models\CMS\CmsUser u
+              LEFT JOIN Doctrine\Tests\Models\CMS\CmsPhonenumber p WITH u = p.user
+        ");
+        $users = $query->execute();
+
+        $this->assertEquals(4, count($users));
+        $this->assertInstanceOf('Doctrine\Tests\Models\CMS\CmsUser', $users[0]);
+        $this->assertInstanceOf('Doctrine\Tests\Models\CMS\CmsPhonenumber', $users[1]);
+        $this->assertInstanceOf('Doctrine\Tests\Models\CMS\CmsUser', $users[2]);
+        $this->assertNull($users[3]);
     }
 }

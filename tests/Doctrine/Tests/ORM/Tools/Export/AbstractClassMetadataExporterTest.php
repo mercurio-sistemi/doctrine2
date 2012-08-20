@@ -68,15 +68,14 @@ abstract class AbstractClassMetadataExporterTest extends \Doctrine\Tests\OrmTest
     protected function _createMetadataDriver($type, $path)
     {
         $mappingDriver = array(
-            'php' => 'PHPDriver',
-            'annotation' => 'AnnotationDriver',
-            'xml' => 'XmlDriver',
-            'yaml' => 'YamlDriver',
+            'php'        => 'Doctrine\Common\Persistence\Mapping\Driver\PHPDriver',
+            'annotation' => 'Doctrine\ORM\Mapping\Driver\AnnotationDriver',
+            'xml'        => 'Doctrine\ORM\Mapping\Driver\XmlDriver',
+            'yaml'       => 'Doctrine\ORM\Mapping\Driver\YamlDriver',
         );
         $this->assertArrayHasKey($type, $mappingDriver, "There is no metadata driver for the type '" . $type . "'.");
-        $driverName = $mappingDriver[$type];
+        $class = $mappingDriver[$type];
 
-        $class = 'Doctrine\ORM\Mapping\Driver\\' . $driverName;
         if ($type === 'annotation') {
             $driver = $this->createAnnotationDriver(array($path));
         } else {
@@ -190,7 +189,7 @@ abstract class AbstractClassMetadataExporterTest extends \Doctrine\Tests\OrmTest
      * @depends testIdentifierIsExported
      * @param ClassMetadataInfo $class
      */
-    public function testFieldsAreExpored($class)
+    public function testFieldsAreExported($class)
     {
         $this->assertTrue(isset($class->fieldMappings['id']['id']) && $class->fieldMappings['id']['id'] === true);
         $this->assertEquals('id', $class->fieldMappings['id']['fieldName']);
@@ -211,13 +210,12 @@ abstract class AbstractClassMetadataExporterTest extends \Doctrine\Tests\OrmTest
     }
 
     /**
-     * @depends testFieldsAreExpored
+     * @depends testFieldsAreExported
      * @param ClassMetadataInfo $class
      */
     public function testOneToOneAssociationsAreExported($class)
     {
         $this->assertTrue(isset($class->associationMappings['address']));
-        //$this->assertInstanceOf('Doctrine\ORM\Mapping\OneToOneMapping', $class->associationMappings['address']);
         $this->assertEquals('Doctrine\Tests\ORM\Tools\Export\Address', $class->associationMappings['address']['targetEntity']);
         $this->assertEquals('address_id', $class->associationMappings['address']['joinColumns'][0]['name']);
         $this->assertEquals('id', $class->associationMappings['address']['joinColumns'][0]['referencedColumnName']);
@@ -231,6 +229,15 @@ abstract class AbstractClassMetadataExporterTest extends \Doctrine\Tests\OrmTest
         $this->assertTrue($class->associationMappings['address']['orphanRemoval']);
 
         return $class;
+    }
+
+    /**
+     * @depends testFieldsAreExported
+     */
+    public function testManyToOneAssociationsAreExported($class)
+    {
+        $this->assertTrue(isset($class->associationMappings['mainGroup']));
+        $this->assertEquals('Doctrine\Tests\ORM\Tools\Export\Group', $class->associationMappings['mainGroup']['targetEntity']);
     }
 
     /**
@@ -380,5 +387,5 @@ class Phonenumber
 }
 class Group
 {
-    
+
 }

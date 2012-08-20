@@ -13,16 +13,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * This software consists of voluntary contributions made by many individuals
- * and is licensed under the LGPL. For more information, see
+ * and is licensed under the MIT license. For more information, see
  * <http://www.doctrine-project.org>.
  */
 
 namespace Doctrine\ORM\Mapping\Driver;
 
-use Doctrine\Common\Cache\ArrayCache,
-    Doctrine\Common\Annotations\AnnotationReader,
-    Doctrine\DBAL\Schema\AbstractSchemaManager,
+use Doctrine\DBAL\Schema\AbstractSchemaManager,
     Doctrine\DBAL\Schema\SchemaException,
+    Doctrine\Common\Persistence\Mapping\Driver\MappingDriver,
+    Doctrine\Common\Persistence\Mapping\ClassMetadata,
     Doctrine\ORM\Mapping\ClassMetadataInfo,
     Doctrine\ORM\Mapping\MappingException,
     Doctrine\Common\Util\Inflector,
@@ -31,14 +31,14 @@ use Doctrine\Common\Cache\ArrayCache,
 /**
  * The DatabaseDriver reverse engineers the mapping metadata from a database.
  *
- * @license http://www.opensource.org/licenses/lgpl-license.php LGPL
+ *
  * @link    www.doctrine-project.org
  * @since   2.0
  * @author  Guilherme Blanco <guilhermeblanco@hotmail.com>
  * @author  Jonathan Wage <jonwage@gmail.com>
  * @author  Benjamin Eberlei <kontakt@beberlei.de>
  */
-class DatabaseDriver implements Driver
+class DatabaseDriver implements MappingDriver
 {
     /**
      * @var AbstractSchemaManager
@@ -61,6 +61,7 @@ class DatabaseDriver implements Driver
      * @var array
      */
     private $classNamesForTables = array();
+
     /**
      * @var array
      */
@@ -88,10 +89,8 @@ class DatabaseDriver implements Driver
     private $repositoryClassName;
 
     /**
-     * Initializes a new AnnotationDriver that uses the given AnnotationReader for reading
-     * docblock annotations.
      *
-     * @param AnnotationReader $reader The AnnotationReader to use.
+     * @param AbstractSchemaManager $schemaManager
      */
     public function __construct(AbstractSchemaManager $schemaManager)
     {
@@ -181,9 +180,9 @@ class DatabaseDriver implements Driver
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
-    public function loadMetadataForClass($className, ClassMetadataInfo $metadata)
+    public function loadMetadataForClass($className, ClassMetadata $metadata)
     {
         $this->reverseEngineerMappingFromDatabase();
 
@@ -583,7 +582,7 @@ class DatabaseDriver implements Driver
 	}
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     public function isTransient($className)
     {
