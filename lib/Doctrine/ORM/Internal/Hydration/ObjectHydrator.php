@@ -325,6 +325,19 @@ class ObjectHydrator extends AbstractHydrator
                 ++$this->_resultCounter;
             }
         }
+        $rowDataTmp = $rowData;
+        $rowData = array();
+
+        // @todo GOETAS
+        foreach (array_keys($this->_rsm->aliasMap) as $alias){
+        	$rowData[$alias]=$rowDataTmp[$alias];
+        	unset($rowDataTmp[$alias]);
+        }
+    	foreach ($rowDataTmp as $alias => $data){
+        	$rowData[$alias]=$data;
+        }
+        unset($rowDataTmp);
+        // fine
 
         // Hydrate the data chunks
         foreach ($rowData as $dqlAlias => $data) {
