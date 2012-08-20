@@ -144,6 +144,9 @@ class DatabaseDriver implements Driver
         
         $this->tables = $this->manyToManyTables = $this->classToTableNames = array();
         foreach ($tables AS $tableName => $table) {
+        	if(!$table->getPrimaryKey()){
+        		continue;
+        	}
             if ($this->_sm->getDatabasePlatform()->supportsForeignKeyConstraints()) {
                 $foreignKeys = $table->getForeignKeys();
             } else {
@@ -307,7 +310,8 @@ class DatabaseDriver implements Driver
                     $associationMapping['fieldName'] = $this->pluralize($this->getFieldNameForColumn($manyTable->getName(), current($otherFk->getColumns()), true));
 
                     $associationMapping['targetEntity'] = $this->getClassNameForTable($otherFk->getForeignTableName());
-                    if (current($manyTable->getColumns())->getName() == $localColumn) { // owing side od inverse side
+
+                    if (current($manyTable->getColumns())->getName() == $localColumn) { // owing side or inverse side
                         $associationMapping['inversedBy'] = $this->pluralize($this->getFieldNameForColumn($manyTable->getName(), current($myFk->getColumns()), true));
                         $associationMapping['joinTable'] = array(
                             'name' => strtolower($manyTable->getName()),
@@ -481,12 +485,9 @@ class DatabaseDriver implements Driver
 							$metadata->mapOneToOne($associationMapping);
 							
 						} catch (\Doctrine\ORM\Mapping\MappingException $e) {
-							echo "Duplicate: ";
-							print_r($associationMapping);
-							//die("ERROR already mapped");
+							echo "Duplicate: $tableName::".$associationMapping['fieldName']."\n";
 						}
 	        			
-
 					}else{
 						
 						if($this->isOneToOneDoubeAssociation($localColumn, $candidateTableName, $foreignTable)){
