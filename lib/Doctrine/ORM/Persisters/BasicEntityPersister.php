@@ -19,6 +19,10 @@
 
 namespace Doctrine\ORM\Persisters;
 
+use Doctrine\Common\Util\ClassUtils;
+
+use Doctrine\ORM\Proxy\Proxy;
+
 use PDO,
     Doctrine\DBAL\LockMode,
     Doctrine\DBAL\Types\Type,
@@ -1512,10 +1516,7 @@ class BasicEntityPersister
     		$metadataFactory = $this->_em->getMetadataFactory();
     		
     		if ($value instanceof Proxy && !$metadataFactory->hasMetadataFor($className)) {
-    			$reflectionClass = new \ReflectionObject($value);
-    			if($reflectionClass->implementsInterface('Doctrine\ORM\Proxy\Proxy')) {
-    				$metadataFactory->setMetadataFor($className, $metadataFactory->getMetadataFor(ClassUtils::getRealClass($className)));
-    			}
+   				$metadataFactory->setMetadataFor($className, $metadataFactory->getMetadataFor(ClassUtils::getRealClass($className)));
     		}
 	    	if ($metadataFactory->hasMetadataFor($className)) {
 	
