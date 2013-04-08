@@ -19,6 +19,10 @@
 
 namespace Doctrine\ORM\Persisters;
 
+use Doctrine\Common\Util\ClassUtils;
+
+use Doctrine\ORM\Proxy\Proxy;
+
 use PDO,
     Doctrine\DBAL\LockMode,
     Doctrine\DBAL\Types\Type,
@@ -1422,8 +1426,7 @@ class BasicEntityPersister
         foreach ($criteria as $field => $value) {
             if ($value === null) {
                 continue; // skip null values.
-            }
-
+            }     
             $types[]  = $this->getType($field, $value);
             $params[] = $this->getValue($value);
         }
@@ -1498,7 +1501,6 @@ class BasicEntityPersister
 
         return $this->getIndividualValue($value);
     }
-
     /**
      * Retrieve an invidiual parameter value
      *
@@ -1507,19 +1509,30 @@ class BasicEntityPersister
      */
     private function getIndividualValue($value)
     {
-        if (is_object($value) && $this->_em->getMetadataFactory()->hasMetadataFor(get_class($value))) {
-            if ($this->_em->getUnitOfWork()->getEntityState($value) === UnitOfWork::STATE_MANAGED) {
-                $idValues = $this->_em->getUnitOfWork()->getEntityIdentifier($value);
-            } else {
-                $class = $this->_em->getClassMetadata(get_class($value));
-                $idValues = $class->getIdentifierValues($value);
-            }
-            $value = reset($idValues);
-            if (is_object($value)){
-                $value = $this->getIndividualValue($value);
-            }
-        }
-
+    	if (is_object($value)){
+    		$className = get_class($value);
+    		$metadataFactory = $this->_em->getMetadataFactory();
+    		
+    		if ($value instanceof Proxy && !$metadataFactory->hasMetadataFor($className)) {
+    			$reflectionClass = new \ReflectionObject($value);
+    			if($reflectionClass->implementsInterface('Doctrine\ORM\Proxy\Proxy')) {
+    				$metadataFactory->setMetadataFor($className, $metadataFactory->getMetadataFor(ClassUtils::getRealClass($className)));
+    			}
+    		}
+	    	if ($metadataFactory->hasMetadataFor($className)) {
+	
+	            if ($this->_em->getUnitOfWork()->getEntityState($value) === UnitOfWork::STATE_MANAGED) {
+	                $idValues = $this->_em->getUnitOfWork()->getEntityIdentifier($value);
+	            } else {
+	                $class = $this->_em->getClassMetadata($className);
+	                $idValues = $class->getIdentifierValues($value);
+	            }
+	            $value = reset($idValues);
+	            if (is_object($value)){
+	                $value = $this->getIndividualValue($value);
+	            }
+	        }
+    	}
         return $value;
     }
 
