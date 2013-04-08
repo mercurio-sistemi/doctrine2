@@ -13,16 +13,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * This software consists of voluntary contributions made by many individuals
- * and is licensed under the MIT license. For more information, see
+ * and is licensed under the LGPL. For more information, see
  * <http://www.doctrine-project.org>.
  */
 
 namespace Doctrine\ORM\Mapping\Driver;
 
-use Doctrine\Common\Persistence\Mapping\ClassMetadata,
-    Doctrine\Common\Persistence\Mapping\Driver\FileDriver,
-    Doctrine\ORM\Mapping\MappingException,
-    Symfony\Component\Yaml\Yaml;
+use Doctrine\ORM\Mapping\ClassMetadataInfo,
+    Doctrine\ORM\Mapping\MappingException;
 
 /**
  * The YamlDriver reads the mapping metadata from yaml schema files.
@@ -33,24 +31,18 @@ use Doctrine\Common\Persistence\Mapping\ClassMetadata,
  * @author Jonathan H. Wage <jonwage@gmail.com>
  * @author Roman Borschel <roman@code-factory.org>
  */
-class YamlDriver extends FileDriver
+class YamlDriver extends AbstractFileDriver
 {
-    const DEFAULT_FILE_EXTENSION = '.dcm.yml';
+    /**
+     * {@inheritdoc}
+     */
+    protected $_fileExtension = '.dcm.yml';
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
-    public function __construct($locator, $fileExtension = self::DEFAULT_FILE_EXTENSION)
+    public function loadMetadataForClass($className, ClassMetadataInfo $metadata)
     {
-        parent::__construct($locator, $fileExtension);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function loadMetadataForClass($className, ClassMetadata $metadata)
-    {
-        /* @var $metadata \Doctrine\ORM\Mapping\ClassMetadataInfo */
         $element = $this->getElement($className);
 
         if ($element['type'] == 'entity') {
@@ -135,7 +127,7 @@ class YamlDriver extends FileDriver
                         $entities[] = $entityResult;
                     }
                 }
-
+                
 
                 if (isset($resultSetMapping['columnResult'])) {
                     foreach ($resultSetMapping['columnResult'] as $columnResultAnnot) {
@@ -327,9 +319,9 @@ class YamlDriver extends FileDriver
                     if (isset($oneToOneElement['joinColumn'])) {
                         $joinColumns[] = $this->joinColumnToArray($oneToOneElement['joinColumn']);
                     } else if (isset($oneToOneElement['joinColumns'])) {
-                        foreach ($oneToOneElement['joinColumns'] as $joinColumnName => $joinColumnElement) {
+                        foreach ($oneToOneElement['joinColumns'] as $name => $joinColumnElement) {
                             if ( ! isset($joinColumnElement['name'])) {
-                                $joinColumnElement['name'] = $joinColumnName;
+                                $joinColumnElement['name'] = $name;
                             }
 
                             $joinColumns[] = $this->joinColumnToArray($joinColumnElement);
@@ -409,9 +401,9 @@ class YamlDriver extends FileDriver
                 if (isset($manyToOneElement['joinColumn'])) {
                     $joinColumns[] = $this->joinColumnToArray($manyToOneElement['joinColumn']);
                 } else if (isset($manyToOneElement['joinColumns'])) {
-                    foreach ($manyToOneElement['joinColumns'] as $joinColumnName => $joinColumnElement) {
+                    foreach ($manyToOneElement['joinColumns'] as $name => $joinColumnElement) {
                         if ( ! isset($joinColumnElement['name'])) {
-                            $joinColumnElement['name'] = $joinColumnName;
+                            $joinColumnElement['name'] = $name;
                         }
 
                         $joinColumns[] = $this->joinColumnToArray($joinColumnElement);
@@ -453,17 +445,17 @@ class YamlDriver extends FileDriver
                         $joinTable['schema'] = $joinTableElement['schema'];
                     }
 
-                    foreach ($joinTableElement['joinColumns'] as $joinColumnName => $joinColumnElement) {
+                    foreach ($joinTableElement['joinColumns'] as $name => $joinColumnElement) {
                         if ( ! isset($joinColumnElement['name'])) {
-                            $joinColumnElement['name'] = $joinColumnName;
+                            $joinColumnElement['name'] = $name;
                         }
 
                         $joinTable['joinColumns'][] = $this->joinColumnToArray($joinColumnElement);
                     }
 
-                    foreach ($joinTableElement['inverseJoinColumns'] as $joinColumnName => $joinColumnElement) {
+                    foreach ($joinTableElement['inverseJoinColumns'] as $name => $joinColumnElement) {
                         if ( ! isset($joinColumnElement['name'])) {
-                            $joinColumnElement['name'] = $joinColumnName;
+                            $joinColumnElement['name'] = $name;
                         }
 
                         $joinTable['inverseJoinColumns'][] = $this->joinColumnToArray($joinColumnElement);
@@ -572,7 +564,7 @@ class YamlDriver extends FileDriver
      * Constructs a joinColumn mapping array based on the information
      * found in the given join column element.
      *
-     * @param array $joinColumnElement The array join column element
+     * @param $joinColumnElement The array join column element
      * @return array The mapping array.
      */
     private function joinColumnToArray($joinColumnElement)
@@ -581,7 +573,7 @@ class YamlDriver extends FileDriver
         if (isset($joinColumnElement['referencedColumnName'])) {
             $joinColumn['referencedColumnName'] = (string) $joinColumnElement['referencedColumnName'];
         }
-
+        
         if (isset($joinColumnElement['name'])) {
             $joinColumn['name'] = (string) $joinColumnElement['name'];
         }
@@ -661,7 +653,7 @@ class YamlDriver extends FileDriver
         }
 
         if (isset($column['version']) && $column['version']) {
-            $mapping['version'] = $column['version'];
+            $metadata->setVersionMapping($mapping);
         }
 
         if (isset($column['columnDefinition'])) {
@@ -672,10 +664,10 @@ class YamlDriver extends FileDriver
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
-    protected function loadMappingFile($file)
+    protected function _loadMappingFile($file)
     {
-        return Yaml::parse($file);
+        return \Symfony\Component\Yaml\Yaml::parse($file);
     }
 }

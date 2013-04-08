@@ -13,7 +13,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * This software consists of voluntary contributions made by many individuals
- * and is licensed under the MIT license. For more information, see
+ * and is licensed under the LGPL. For more information, see
  * <http://www.doctrine-project.org>.
  */
 
@@ -23,7 +23,6 @@ use PDO,
     Doctrine\DBAL\Connection,
     Doctrine\DBAL\Types\Type,
     Doctrine\ORM\EntityManager,
-    Doctrine\ORM\Events,
     Doctrine\ORM\Mapping\ClassMetadata;
 
 /**
@@ -83,9 +82,6 @@ abstract class AbstractHydrator
         $this->_stmt  = $stmt;
         $this->_rsm   = $resultSetMapping;
         $this->_hints = $hints;
-
-        $evm = $this->_em->getEventManager();
-        $evm->addEventListener(array(Events::onClear), $this);
 
         $this->prepare();
 
@@ -380,13 +376,5 @@ abstract class AbstractHydrator
         }
 
         $this->_em->getUnitOfWork()->registerManaged($entity, $id, $data);
-    }
-
-    /**
-     * When executed in a hydrate() loop we have to clear internal state to
-     * decrease memory consumption.
-     */
-    public function onClear($eventArgs)
-    {
     }
 }

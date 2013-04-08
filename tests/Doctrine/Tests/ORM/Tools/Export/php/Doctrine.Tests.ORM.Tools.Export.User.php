@@ -31,10 +31,6 @@ $metadata->mapField(array(
    'columnDefinition' => 'CHAR(32) NOT NULL',
   ));
 $metadata->setIdGeneratorType(ClassMetadataInfo::GENERATOR_TYPE_AUTO);
-$metadata->mapManyToOne(array(
-    'fieldName' => 'mainGroup',
-    'targetEntity' => 'Doctrine\\Tests\\ORM\Tools\\Export\\Group',
-));
 $metadata->mapOneToOne(array(
    'fieldName' => 'address',
    'targetEntity' => 'Doctrine\\Tests\\ORM\\Tools\\Export\\Address',

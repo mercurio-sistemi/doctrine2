@@ -13,19 +13,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * This software consists of voluntary contributions made by many individuals
- * and is licensed under the MIT license. For more information, see
+ * and is licensed under the LGPL. For more information, see
  * <http://www.doctrine-project.org>.
  */
 
 namespace Doctrine\ORM;
 
-use Doctrine\Common\Collections\ArrayCollection;
-
-use Doctrine\DBAL\LockMode;
-
-use Doctrine\ORM\Query\Parser;
-use Doctrine\ORM\Query\ParserResult;
-use Doctrine\ORM\Query\QueryException;
+use Doctrine\DBAL\LockMode,
+    Doctrine\ORM\Query\Parser,
+    Doctrine\ORM\Query\QueryException;
 
 /**
  * A Query object represents a DQL query.
@@ -220,7 +216,7 @@ final class Query extends AbstractQuery
         $hash   = $this->_getQueryCacheId();
         $cached = $this->_expireQueryCache ? false : $queryCache->fetch($hash);
 
-        if ($cached instanceof ParserResult) {
+        if ($cached !== false) {
             // Cache hit.
             $this->_parserResult = $cached;
 
@@ -251,7 +247,7 @@ final class Query extends AbstractQuery
         // Prepare parameters
         $paramMappings = $this->_parserResult->getParameterMappings();
 
-        if (count($paramMappings) != count($this->parameters)) {
+        if (count($paramMappings) != count($this->_params)) {
             throw QueryException::invalidParameterNumber();
         }
 
@@ -272,23 +268,17 @@ final class Query extends AbstractQuery
      */
     private function processParameterMappings($paramMappings)
     {
-        $sqlParams = array();
-        $types     = array();
+        $sqlParams = $types = array();
 
-        foreach ($this->parameters as $parameter) {
-            $key = $parameter->getName();
-
+        foreach ($this->_params as $key => $value) {
             if ( ! isset($paramMappings[$key])) {
                 throw QueryException::unknownParameter($key);
             }
 
-            $value = $this->processParameterValue($parameter->getValue());
-            $type  = ($parameter->getValue() === $value)
-                ? $parameter->getType()
-                : Query\ParameterTypeInferer::inferType($value);
-
-            foreach ($paramMappings[$key] as $position) {
-                $types[$position] = $type;
+            if (isset($this->_paramTypes[$key])) {
+                foreach ($paramMappings[$key] as $position) {
+                    $types[$position] = $this->_paramTypes[$key];
+                }
             }
 
             $sqlPositions = $paramMappings[$key];
@@ -347,8 +337,8 @@ final class Query extends AbstractQuery
     /**
      * Returns the cache driver used for query caching.
      *
-     * @return CacheDriver The cache driver used for query caching or NULL, if
-     *                     this Query does not use query caching.
+     * @return CacheDriver The cache driver used for query caching or NULL, if this
+     * 					   Query does not use query caching.
      */
     public function getQueryCacheDriver()
     {
@@ -526,15 +516,15 @@ final class Query extends AbstractQuery
      * Executes the query and returns an IterableResult that can be used to incrementally
      * iterated over the result.
      *
-     * @param \Doctrine\Common\Collections\ArrayCollection|array $parameters The query parameters.
+     * @param array $params The query parameters.
      * @param integer $hydrationMode The hydration mode to use.
      * @return \Doctrine\ORM\Internal\Hydration\IterableResult
      */
-    public function iterate($parameters = null, $hydrationMode = self::HYDRATE_OBJECT)
+    public function iterate(array $params = array(), $hydrationMode = self::HYDRATE_OBJECT)
     {
         $this->setHint(self::HINT_INTERNAL_ITERATION, true);
 
-        return parent::iterate($parameters, $hydrationMode);
+        return parent::iterate($params, $hydrationMode);
     }
 
     /**

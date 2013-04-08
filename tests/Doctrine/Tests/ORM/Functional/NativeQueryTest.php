@@ -2,12 +2,8 @@
 
 namespace Doctrine\Tests\ORM\Functional;
 
-use Doctrine\Common\Collections\ArrayCollection;
-
 use Doctrine\ORM\Query\ResultSetMapping;
 use Doctrine\ORM\Query\ResultSetMappingBuilder;
-use Doctrine\ORM\Query\Parameter;
-
 use Doctrine\Tests\Models\CMS\CmsUser;
 use Doctrine\Tests\Models\CMS\CmsPhonenumber;
 use Doctrine\Tests\Models\CMS\CmsAddress;
@@ -195,10 +191,6 @@ class NativeQueryTest extends \Doctrine\Tests\OrmFunctionalTestCase
 
     public function testFluentInterface()
     {
-        $parameters = new ArrayCollection;
-        $parameters->add(new Parameter(1, 'foo'));
-        $parameters->add(new Parameter(2, 'bar'));
-
         $rsm = new ResultSetMapping;
 
         $q = $this->_em->createNativeQuery('SELECT id, name, status, phonenumber FROM cms_users INNER JOIN cms_phonenumbers ON id = user_id WHERE username = ?', $rsm);
@@ -207,7 +199,7 @@ class NativeQueryTest extends \Doctrine\Tests\OrmFunctionalTestCase
           ->expireResultCache(true)
           ->setHint('foo', 'bar')
           ->setParameter(1, 'foo')
-          ->setParameters($parameters)
+          ->setParameters(array(2 => 'bar'))
           ->setResultCacheDriver(null)
           ->setResultCacheLifetime(3500);
 
@@ -370,7 +362,7 @@ class NativeQueryTest extends \Doctrine\Tests\OrmFunctionalTestCase
         $repository = $this->_em->getRepository('Doctrine\Tests\Models\CMS\CmsAddress');
         $query      = $repository->createNativeNamedQuery('find-all');
         $result     = $query->getResult();
-
+        
         $this->assertCount(1, $result);
         $this->assertInstanceOf('Doctrine\Tests\Models\CMS\CmsAddress', $result[0]);
         $this->assertEquals($addr->id,  $result[0]->id);
@@ -404,7 +396,7 @@ class NativeQueryTest extends \Doctrine\Tests\OrmFunctionalTestCase
 
         $result = $repository->createNativeNamedQuery('fetchIdAndUsernameWithResultClass')
                         ->setParameter(1, 'FabioBatSilva')->getResult();
-
+        
         $this->assertEquals(1, count($result));
         $this->assertInstanceOf('Doctrine\Tests\Models\CMS\CmsUser', $result[0]);
         $this->assertNull($result[0]->name);
@@ -519,7 +511,7 @@ class NativeQueryTest extends \Doctrine\Tests\OrmFunctionalTestCase
         $user2->name            = 'test tester';
         $user2->username        = 'test';
         $user2->status          = 'tester';
-
+        
         $phone1                 = new CmsPhonenumber;
         $phone2                 = new CmsPhonenumber;
         $phone3                 = new CmsPhonenumber;
@@ -536,7 +528,7 @@ class NativeQueryTest extends \Doctrine\Tests\OrmFunctionalTestCase
         $this->_em->flush();
 
         $this->_em->clear();
-
+        
         $repository = $this->_em->getRepository('Doctrine\Tests\Models\CMS\CmsUser');
 
         $result = $repository->createNativeNamedQuery('fetchUserPhonenumberCount')
@@ -591,7 +583,7 @@ class NativeQueryTest extends \Doctrine\Tests\OrmFunctionalTestCase
 
 
         $this->_em->clear();
-
+        
 
         $result = $repository->createNativeNamedQuery('fetchAllWithResultClass')
                         ->getResult();

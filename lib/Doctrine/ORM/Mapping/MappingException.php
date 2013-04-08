@@ -13,7 +13,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * This software consists of voluntary contributions made by many individuals
- * and is licensed under the MIT license. For more information, see
+ * and is licensed under the LGPL. For more information, see
  * <http://www.phpdoctrine.org>.
  */
 
@@ -78,6 +78,11 @@ class MappingException extends \Doctrine\ORM\ORMException
         return new self("No mapping file found named '$fileName' for class '$entityName'.");
     }
 
+    public static function invalidMappingFile($entityName, $fileName)
+    {
+        return new self("Invalid mapping file '$fileName' for class '$entityName'.");
+    }
+
      /**
      * Exception for invalid property name override.
      *
@@ -139,7 +144,7 @@ class MappingException extends \Doctrine\ORM\ORMException
     {
         return new self('Result set mapping named "'.$resultName.'" in "'.$entity.' requires a field name.');
     }
-
+    
     public static function nameIsMandatoryForSqlResultSetMapping($className)
     {
         return new self("Result set mapping name on entity class '$className' is not defined.");
@@ -293,17 +298,6 @@ class MappingException extends \Doctrine\ORM\ORMException
         );
     }
 
-    public static function duplicateDiscriminatorEntry($className, array $entries, array $map)
-    {
-        return new self(
-            "The entries " . implode(', ',  $entries) . " in discriminator map of class '" . $className . "' is duplicated. " .
-            "If the discriminator map is automatically generated you have to convert it to an explicit discriminator map now. " .
-            "The entries of the current map are: @DiscriminatorMap({" . implode(', ', array_map(
-                function($a, $b) { return "'$a': '$b'"; }, array_keys($map), array_values($map)
-            )) . "})"
-        );
-    }
-
     public static function missingDiscriminatorMap($className)
     {
         return new self("Entity class '$className' is using inheritance but no discriminator map was defined.");
@@ -428,14 +422,12 @@ class MappingException extends \Doctrine\ORM\ORMException
         return new self("The target-entity " . $targetEntity . " cannot be found in '" . $sourceEntity."#".$associationName."'.");
     }
 
-    public static function invalidCascadeOption(array $cascades, $className, $propertyName)
+    public static function invalidCascadeOption(array $cascades)
     {
         $cascades = implode(", ", array_map(function ($e) { return "'" . $e . "'"; }, $cascades));
-        return new self(sprintf(
-            "You have specified invalid cascade options for %s::$%s: %s; available options: 'remove', 'persist', 'refresh', 'merge', and 'detach'",
-            $className,
-            $propertyName,
-            $cascades
-        ));
+        return new self(
+            "Invalid cascade option(s) specified: " . $cascades . ". " .
+            "Only 'remove', 'persist', 'refresh', 'merge' and 'detach' are allowed."
+        );
     }
 }

@@ -13,7 +13,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * This software consists of voluntary contributions made by many individuals
- * and is licensed under the MIT license. For more information, see
+ * and is licensed under the LGPL. For more information, see
  * <http://www.doctrine-project.org>.
  */
 
@@ -21,6 +21,7 @@ namespace Doctrine\ORM\Proxy;
 
 use Doctrine\ORM\EntityManager,
     Doctrine\ORM\Mapping\ClassMetadata,
+    Doctrine\ORM\Mapping\AssociationMapping,
     Doctrine\Common\Util\ClassUtils;
 
 /**
@@ -90,6 +91,10 @@ class ProxyFactory
                 $this->_generateProxyClass($this->_em->getClassMetadata($className), $fileName, self::$_proxyClassTemplate);
             }
             require $fileName;
+        }
+
+        if ( ! $this->_em->getMetadataFactory()->hasMetadataFor($fqn)) {
+            $this->_em->getMetadataFactory()->setMetadataFor($fqn, $this->_em->getClassMetadata($className));
         }
 
         $entityPersister = $this->_em->getUnitOfWork()->getEntityPersister($className);
@@ -189,9 +194,7 @@ class ProxyFactory
             throw ProxyException::proxyDirectoryNotWritable();
         }
 
-        $tmpFileName = $fileName . '.' . uniqid("", true);
-        file_put_contents($tmpFileName, $file);
-        rename($tmpFileName, $fileName);
+        file_put_contents($fileName, $file, LOCK_EX);
     }
 
     /**

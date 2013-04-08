@@ -13,7 +13,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * This software consists of voluntary contributions made by many individuals
- * and is licensed under the MIT license. For more information, see
+ * and is licensed under the LGPL. For more information, see
  * <http://www.doctrine-project.org>.
  */
 
@@ -54,6 +54,7 @@ class ObjectHydrator extends AbstractHydrator
     private $_rootAliases = array();
     private $_initializedCollections = array();
     private $_existingCollections = array();
+    //private $_createdEntities;
 
 
     /** @override */
@@ -160,10 +161,10 @@ class ObjectHydrator extends AbstractHydrator
     /**
      * Initializes a related collection.
      *
-     * @param object        $entity         The entity to which the collection belongs.
+     * @param object $entity The entity to which the collection belongs.
      * @param ClassMetadata $class
-     * @param string        $fieldName      The name of the field on the entity that holds the collection.
-     * @param string        $parentDqlAlias Alias of the parent fetch joining this collection.
+     * @param string $name The name of the field on the entity that holds the collection.
+     * @param string $parentDqlAlias Alias of the parent fetch joining this collection.
      */
     private function _initRelatedCollection($entity, $class, $fieldName, $parentDqlAlias)
     {
@@ -207,7 +208,7 @@ class ObjectHydrator extends AbstractHydrator
     /**
      * Gets an entity instance.
      *
-     * @param array  $data     The instance data.
+     * @param array $data The instance data.
      * @param string $dqlAlias The DQL alias of the entity's class.
      * @return object The entity.
      */
@@ -245,11 +246,6 @@ class ObjectHydrator extends AbstractHydrator
         return $this->_uow->createEntity($className, $data, $this->_hints);
     }
 
-    /**
-     * @param string $className
-     * @param array  $data
-     * @return mixed
-     */
     private function _getEntityFromIdentityMap($className, array $data)
     {
         // TODO: Abstract this code and UnitOfWork::createEntity() equivalent?
@@ -307,8 +303,8 @@ class ObjectHydrator extends AbstractHydrator
      *         level of the hydrated result. A typical example are the objects of the type
      *         specified by the FROM clause in a DQL query.
      *
-     * @param array $row    The data of the row to process.
-     * @param array $cache  The cache to use.
+     * @param array $data The data of the row to process.
+     * @param array $cache The cache to use.
      * @param array $result The result array to fill.
      */
     protected function hydrateRowData(array $row, array &$cache, array &$result)
@@ -461,7 +457,6 @@ class ObjectHydrator extends AbstractHydrator
                             $this->_resultPointers[$dqlAlias] = $element;
                         } else {
                             $this->_uow->setOriginalEntityProperty($oid, $relationField, null);
-                            $reflField->setValue($parentObject, null);
                         }
                         // else leave $reflFieldValue null for single-valued associations
                     } else {
@@ -543,22 +538,6 @@ class ObjectHydrator extends AbstractHydrator
             foreach ($scalars as $name => $value) {
                 $result[$resultKey][$name] = $value;
             }
-        }
-    }
-
-    /**
-     * When executed in a hydrate() loop we may have to clear internal state to
-     * decrease memory consumption.
-     */
-    public function onClear($eventArgs)
-    {
-        parent::onClear($eventArgs);
-
-        $aliases              = array_keys($this->_identifierMap);
-        $this->_identifierMap = array();
-
-        foreach ($aliases as $alias) {
-            $this->_identifierMap[$alias] = array();
         }
     }
 }

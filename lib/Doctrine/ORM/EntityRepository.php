@@ -13,7 +13,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * This software consists of voluntary contributions made by many individuals
- * and is licensed under the MIT license. For more information, see
+ * and is licensed under the LGPL. For more information, see
  * <http://www.doctrine-project.org>.
  */
 
@@ -21,10 +21,6 @@ namespace Doctrine\ORM;
 
 use Doctrine\DBAL\LockMode;
 use Doctrine\Common\Persistence\ObjectRepository;
-
-use Doctrine\Common\Collections\Selectable;
-use Doctrine\Common\Collections\Criteria;
-use Doctrine\Common\Collections\ArrayCollection;
 
 /**
  * An EntityRepository serves as a repository for entities with generic as well as
@@ -39,7 +35,7 @@ use Doctrine\Common\Collections\ArrayCollection;
  * @author  Jonathan Wage <jonwage@gmail.com>
  * @author  Roman Borschel <roman@code-factory.org>
  */
-class EntityRepository implements ObjectRepository, Selectable
+class EntityRepository implements ObjectRepository
 {
     /**
      * @var string
@@ -65,8 +61,8 @@ class EntityRepository implements ObjectRepository, Selectable
     public function __construct($em, Mapping\ClassMetadata $class)
     {
         $this->_entityName = $class->name;
-        $this->_em         = $em;
-        $this->_class      = $class;
+        $this->_em = $em;
+        $this->_class = $class;
     }
 
     /**
@@ -104,7 +100,7 @@ class EntityRepository implements ObjectRepository, Selectable
         $queryMapping   = $this->_class->getNamedNativeQuery($queryName);
         $rsm            = new Query\ResultSetMappingBuilder($this->_em);
         $rsm->addNamedNativeQueryMapping($this->_class, $queryMapping);
-
+        
         return $this->_em->createNativeQuery($queryMapping['query'], $rsm);
     }
 
@@ -119,15 +115,64 @@ class EntityRepository implements ObjectRepository, Selectable
     /**
      * Finds an entity by its primary key / identifier.
      *
-     * @param mixed $id The identifier.
-     * @param integer $lockMode
-     * @param integer $lockVersion
-     *
+     * @param $id The identifier.
+     * @param int $lockMode
+     * @param int $lockVersion
      * @return object The entity.
      */
     public function find($id, $lockMode = LockMode::NONE, $lockVersion = null)
     {
-        return $this->_em->find($this->_entityName, $id, $lockMode, $lockVersion);
+        if ( ! is_array($id)) {
+            $id = array($this->_class->identifier[0] => $id);
+        }
+
+        $sortedId = array();
+
+        foreach ($this->_class->identifier as $identifier) {
+            if ( ! isset($id[$identifier])) {
+                throw ORMException::missingIdentifierField($this->_class->name, $identifier);
+            }
+
+            $sortedId[$identifier] = $id[$identifier];
+        }
+
+        // Check identity map first
+        if (($entity = $this->_em->getUnitOfWork()->tryGetById($sortedId, $this->_class->rootEntityName)) !== false) {
+            if ( ! ($entity instanceof $this->_class->name)) {
+                return null;
+            }
+
+            if ($lockMode !== LockMode::NONE) {
+                $this->_em->lock($entity, $lockMode, $lockVersion);
+            }
+
+            return $entity; // Hit!
+        }
+
+        $persister = $this->_em->getUnitOfWork()->getEntityPersister($this->_entityName);
+
+        switch ($lockMode) {
+            case LockMode::NONE:
+                return $persister->load($sortedId);
+
+            case LockMode::OPTIMISTIC:
+                if ( ! $this->_class->isVersioned) {
+                    throw OptimisticLockException::notVersioned($this->_entityName);
+                }
+
+                $entity = $persister->load($sortedId);
+
+                $this->_em->getUnitOfWork()->lock($entity, $lockMode, $lockVersion);
+
+                return $entity;
+
+            default:
+                if ( ! $this->_em->getConnection()->isTransactionActive()) {
+                    throw TransactionRequiredException::transactionRequired();
+                }
+
+                return $persister->load($sortedId, null, null, array(), $lockMode);
+        }
     }
 
     /**
@@ -256,20 +301,4 @@ class EntityRepository implements ObjectRepository, Selectable
     {
         return $this->_class;
     }
-
-    /**
-     * Select all elements from a selectable that match the expression and
-     * return a new collection containing these elements.
-     *
-     * @param \Doctrine\Common\Collections\Criteria $criteria
-     *
-     * @return \Doctrine\Common\Collections\Collection
-     */
-    public function matching(Criteria $criteria)
-    {
-        $persister = $this->_em->getUnitOfWork()->getEntityPersister($this->_entityName);
-
-        return new ArrayCollection($persister->loadCriteria($criteria));
-    }
 }
-

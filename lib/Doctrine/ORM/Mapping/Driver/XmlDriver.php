@@ -1,5 +1,7 @@
 <?php
 /*
+ *  $Id$
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -13,15 +15,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * This software consists of voluntary contributions made by many individuals
- * and is licensed under the MIT license. For more information, see
+ * and is licensed under the LGPL. For more information, see
  * <http://www.doctrine-project.org>.
  */
 
 namespace Doctrine\ORM\Mapping\Driver;
 
 use SimpleXMLElement,
-    Doctrine\Common\Persistence\Mapping\Driver\FileDriver,
-    Doctrine\Common\Persistence\Mapping\ClassMetadata,
+    Doctrine\ORM\Mapping\ClassMetadataInfo,
     Doctrine\ORM\Mapping\MappingException;
 
 /**
@@ -30,32 +31,26 @@ use SimpleXMLElement,
  * @license 	http://www.opensource.org/licenses/lgpl-license.php LGPL
  * @link    	www.doctrine-project.org
  * @since   	2.0
+ * @version     $Revision$
  * @author		Benjamin Eberlei <kontakt@beberlei.de>
  * @author		Guilherme Blanco <guilhermeblanco@hotmail.com>
  * @author      Jonathan H. Wage <jonwage@gmail.com>
  * @author      Roman Borschel <roman@code-factory.org>
  */
-class XmlDriver extends FileDriver
+class XmlDriver extends AbstractFileDriver
 {
-    const DEFAULT_FILE_EXTENSION = '.dcm.xml';
+    /**
+     * {@inheritdoc}
+     */
+    protected $_fileExtension = '.dcm.xml';
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
-    public function __construct($locator, $fileExtension = self::DEFAULT_FILE_EXTENSION)
+    public function loadMetadataForClass($className, ClassMetadataInfo $metadata)
     {
-        parent::__construct($locator, $fileExtension);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function loadMetadataForClass($className, ClassMetadata $metadata)
-    {
-        /* @var $metadata \Doctrine\ORM\Mapping\ClassMetadataInfo */
-        /* @var $xmlRoot SimpleXMLElement */
         $xmlRoot = $this->getElement($className);
-
+        
         if ($xmlRoot->getName() == 'entity') {
             if (isset($xmlRoot['repository-class'])) {
                 $metadata->setCustomRepositoryClass((string)$xmlRoot['repository-class']);
@@ -81,7 +76,7 @@ class XmlDriver extends FileDriver
         $metadata->setPrimaryTable($table);
 
         // Evaluate named queries
-        if (isset($xmlRoot->{'named-queries'})) {
+        if (isset($xmlRoot['named-queries'])) {
             foreach ($xmlRoot->{'named-queries'}->{'named-query'} as $namedQueryElement) {
                 $metadata->addNamedQuery(array(
                     'name'  => (string)$namedQueryElement['name'],
@@ -237,7 +232,7 @@ class XmlDriver extends FileDriver
         foreach ($mappings as $mapping) {
              $metadata->mapField($mapping);
         }
-
+        
         // Evaluate <id ...> mappings
         $associationIds = array();
         foreach ($xmlRoot->id as $idElement) {
@@ -552,14 +547,13 @@ class XmlDriver extends FileDriver
     /**
      * Parses (nested) option elements.
      *
-     * @param SimpleXMLElement $options the XML element.
+     * @param $options The XML element.
      * @return array The options array.
      */
     private function _parseOptions(SimpleXMLElement $options)
     {
         $array = array();
 
-        /* @var $option SimpleXMLElement */
         foreach ($options as $option) {
             if ($option->count()) {
                 $value = $this->_parseOptions($option->children());
@@ -583,7 +577,7 @@ class XmlDriver extends FileDriver
      * Constructs a joinColumn mapping array based on the information
      * found in the given SimpleXMLElement.
      *
-     * @param SimpleXMLElement $joinColumnElement the XML element.
+     * @param $joinColumnElement The XML element.
      * @return array The mapping array.
      */
     private function joinColumnToArray(SimpleXMLElement $joinColumnElement)
@@ -621,43 +615,43 @@ class XmlDriver extends FileDriver
     private function columnToArray(SimpleXMLElement $fieldMapping)
     {
         $mapping = array(
-            'fieldName' => (string) $fieldMapping['name'],
+            'fieldName' => (string)$fieldMapping['name'],
         );
 
         if (isset($fieldMapping['type'])) {
-            $mapping['type'] = (string) $fieldMapping['type'];
+            $mapping['type'] = (string)$fieldMapping['type'];
         }
 
         if (isset($fieldMapping['column'])) {
-            $mapping['columnName'] = (string) $fieldMapping['column'];
+            $mapping['columnName'] = (string)$fieldMapping['column'];
         }
 
         if (isset($fieldMapping['length'])) {
-            $mapping['length'] = (int) $fieldMapping['length'];
+            $mapping['length'] = (int)$fieldMapping['length'];
         }
 
         if (isset($fieldMapping['precision'])) {
-            $mapping['precision'] = (int) $fieldMapping['precision'];
+            $mapping['precision'] = (int)$fieldMapping['precision'];
         }
 
         if (isset($fieldMapping['scale'])) {
-            $mapping['scale'] = (int) $fieldMapping['scale'];
+            $mapping['scale'] = (int)$fieldMapping['scale'];
         }
 
         if (isset($fieldMapping['unique'])) {
-            $mapping['unique'] = ((string) $fieldMapping['unique'] == "false") ? false : true;
+            $mapping['unique'] = ((string)$fieldMapping['unique'] == "false") ? false : true;
         }
 
         if (isset($fieldMapping['nullable'])) {
-            $mapping['nullable'] = ((string) $fieldMapping['nullable'] == "false") ? false : true;
+            $mapping['nullable'] = ((string)$fieldMapping['nullable'] == "false") ? false : true;
         }
 
         if (isset($fieldMapping['version']) && $fieldMapping['version']) {
-            $mapping['version'] = $fieldMapping['version'];
+            $metadata->setVersionMapping($mapping);
         }
 
         if (isset($fieldMapping['column-definition'])) {
-            $mapping['columnDefinition'] = (string) $fieldMapping['column-definition'];
+            $mapping['columnDefinition'] = (string)$fieldMapping['column-definition'];
         }
 
         if (isset($fieldMapping->options)) {
@@ -670,13 +664,12 @@ class XmlDriver extends FileDriver
     /**
      * Gathers a list of cascade options found in the given cascade element.
      *
-     * @param SimpleXMLElement $cascadeElement the cascade element.
+     * @param $cascadeElement The cascade element.
      * @return array The list of cascade options.
      */
     private function _getCascadeMappings($cascadeElement)
     {
         $cascades = array();
-        /* @var $action SimpleXmlElement */
         foreach ($cascadeElement->children() as $action) {
             // According to the JPA specifications, XML uses "cascade-persist"
             // instead of "persist". Here, both variations
@@ -689,9 +682,9 @@ class XmlDriver extends FileDriver
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
-    protected function loadMappingFile($file)
+    protected function _loadMappingFile($file)
     {
         $result = array();
         $xmlElement = simplexml_load_file($file);
