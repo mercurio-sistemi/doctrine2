@@ -172,6 +172,9 @@ class XmlExporter extends AbstractExporter
                 if (isset($field['unique']) && $field['unique']) {
                     $fieldXml->addAttribute('unique', $field['unique']);
                 }
+                if (isset($field['nullable'])) {
+                	$fieldXml->addAttribute('nullable', $field['nullable']?"true":"false");
+                }                
                 if (isset($field['options'])) {
                     $optionsXml = $fieldXml->addChild('options');
                     foreach ($field['options'] as $key => $value) {
