@@ -17,7 +17,7 @@ class Admin1
 
     /**
      * @Id
-     * @ManyToOne(targetEntity="Country", inversedBy="admin1")
+     * @ManyToOne(targetEntity="Country")
      * @JoinColumn(name="country", referencedColumnName="id")
      */
     public $country;
@@ -25,11 +25,18 @@ class Admin1
     /**
      * @OneToMany(targetEntity="Admin1AlternateName", mappedBy="admin1")
      */
-    public $names;
+    public $names = array();
 
     /**
      * @Column(type="string", length=255);
      */
     public $name;
+
+    public function __construct($id, $name, Country $country)
+    {
+        $this->id = $id;
+        $this->name = $name;
+        $this->country = $country;
+    }
 
 }

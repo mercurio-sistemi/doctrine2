@@ -1575,14 +1575,15 @@ class BasicEntityPersister implements EntityPersister
     public function getSelectConditionStatementSQL($field, $value, $assoc = null, $comparison = null)
     {
         $selectedColumns = array();
-        $columns    = $this->getSelectConditionStatementColumnSQL($field, $assoc);
+        $columns         = $this->getSelectConditionStatementColumnSQL($field, $assoc);
 
-        if (count($columns)>1 && $comparison === Comparison::IN){
-            throw ORMException::cantUseInOperatorOnComposteKeys();
+        if (count($columns)>1 && $comparison === Comparison::IN) {
+            throw ORMException::cantUseInOperatorOnCompositeKeys();
         }
 
         foreach ($columns as $column) {
             $placeholder  = '?';
+
             if (isset($this->class->fieldMappings[$field]['requireSQLConversion'])) {
                 $placeholder = Type::getType($this->class->getTypeOfField($field))->convertToDatabaseValueSQL($placeholder, $this->platform);
             }
@@ -1608,11 +1609,14 @@ class BasicEntityPersister implements EntityPersister
                 if (false !== array_search(null, $value, true)) {
                     $selectedColumns[] = sprintf('(%s OR %s IS NULL)' , $in, $column);
                     continue;
+
                 }
 
                 $selectedColumns[] = $in;
                 continue;
+
             }
+
             if ($value === null) {
                 $selectedColumns[] = sprintf('%s IS NULL' , $column);
                 continue;
@@ -1650,13 +1654,14 @@ class BasicEntityPersister implements EntityPersister
                 throw ORMException::invalidFindByInverseAssociation($this->class->name, $field);
             }
             $className  = (isset($this->class->associationMappings[$field]['inherited']))
-            ? $this->class->associationMappings[$field]['inherited']
-            : $this->class->name;
+                ? $this->class->associationMappings[$field]['inherited']
+                : $this->class->name;
 
             $columns = array();
             foreach ($this->class->associationMappings[$field]['joinColumns'] as $joinColumn) {
                 $columns[] = $this->getSQLTableAlias($className) . '.' . $this->quoteStrategy->getJoinColumnName($joinColumn, $this->class, $this->platform);
             }
+
             return $columns;
         }
 
@@ -1793,18 +1798,16 @@ class BasicEntityPersister implements EntityPersister
             case (isset($this->class->fieldMappings[$field])):
                 $types[] = $this->class->fieldMappings[$field]['type'];
                 break;
+
             case (isset($this->class->associationMappings[$field])):
                 $assoc = $this->class->associationMappings[$field];
 
                 $targetPersister = $this->em->getUnitOfWork()->getEntityPersister($assoc['targetEntity']);
+                $parameters = $targetPersister->expandParameters($assoc['isOwningSide']?$assoc['targetToSourceKeyColumns']:$assoc['sourceToTargetKeyColumns']);
 
-                if ($assoc['isOwningSide']) {
-                    $parameters = $targetPersister->expandParameters($assoc['targetToSourceKeyColumns']);
-                }else{
-                    $parameters = $targetPersister->expandParameters($assoc['sourceToTargetKeyColumns']);
-                }
                 $types = array_merge($types, $parameters[1]);
                 break;
+
             default:
                 $types[] = null;
                 break;
@@ -1816,6 +1819,7 @@ class BasicEntityPersister implements EntityPersister
                 return $type + Connection::ARRAY_PARAM_OFFSET;
             }, $types);
         }
+
         return $types;
     }
 
@@ -1834,6 +1838,7 @@ class BasicEntityPersister implements EntityPersister
             foreach ($value as $itemValue) {
                 $newValue = array_merge($newValue, $this->getValues($itemValue));
             }
+
             return array($newValue);
         }
 
@@ -1844,6 +1849,7 @@ class BasicEntityPersister implements EntityPersister
                 foreach ($class->getIdentifierValues($value) as $innerValue) {
                     $newValue = array_merge($newValue, $this->getValues($innerValue));
                 }
+
                 return $newValue;
             }
         }
