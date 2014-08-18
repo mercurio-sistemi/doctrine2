@@ -17,7 +17,7 @@
  * <http://www.doctrine-project.org>.
  */
 
-namespace Doctrine\ORM\Persisters\Entity;
+namespace Doctrine\ORM\Persisters;
 
 use Doctrine\Common\Collections\Criteria;
 use Doctrine\Common\Collections\Expr\Comparison;
@@ -36,6 +36,7 @@ use Doctrine\ORM\Persisters\SqlValueVisitor;
 use Doctrine\ORM\Query;
 use Doctrine\ORM\UnitOfWork;
 use Doctrine\ORM\Utility\IdentifierFlattener;
+use Doctrine\Common\Collections\Expr\Comparison;
 
 /**
  * A BasicEntityPersister maps an entity to a single table in a relational database.
@@ -122,7 +123,7 @@ class BasicEntityPersister implements EntityPersister
     /**
      * The EntityManager instance.
      *
-     * @var EntityManagerInterface
+     * @var \Doctrine\ORM\EntityManager
      */
     protected $em;
 
@@ -219,10 +220,10 @@ class BasicEntityPersister implements EntityPersister
      * Initializes a new <tt>BasicEntityPersister</tt> that uses the given EntityManager
      * and persists instances of the class described by the given ClassMetadata descriptor.
      *
-     * @param EntityManagerInterface $em
-     * @param ClassMetadata          $class
+     * @param \Doctrine\ORM\EntityManager         $em
+     * @param \Doctrine\ORM\Mapping\ClassMetadata $class
      */
-    public function __construct(EntityManagerInterface $em, ClassMetadata $class)
+    public function __construct(EntityManager $em, ClassMetadata $class)
     {
         $this->em                  = $em;
         $this->class               = $class;
@@ -558,17 +559,19 @@ class BasicEntityPersister implements EntityPersister
     public function delete($entity)
     {
         $class      = $this->class;
+        $em         = $this->em;
+
         $identifier = $this->em->getUnitOfWork()->getEntityIdentifier($entity);
         $tableName  = $this->quoteStrategy->getTableName($class, $this->platform);
         $idColumns  = $this->quoteStrategy->getIdentifierColumnNames($class, $this->platform);
         $id         = array_combine($idColumns, $identifier);
-        $types      = array_map(function ($identifier) use ($class) {
+        $types      = array_map(function ($identifier) use ($class, $em) {
 
             if (isset($class->fieldMappings[$identifier])) {
                 return $class->fieldMappings[$identifier]['type'];
             }
 
-            $targetMapping = $this->em->getClassMetadata($class->associationMappings[$identifier]['targetEntity']);
+            $targetMapping = $em->getClassMetadata($class->associationMappings[$identifier]['targetEntity']);
 
             if (isset($targetMapping->fieldMappings[$targetMapping->identifier[0]])) {
                 return $targetMapping->fieldMappings[$targetMapping->identifier[0]]['type'];
@@ -583,8 +586,7 @@ class BasicEntityPersister implements EntityPersister
         }, $class->identifier);
 
         $this->deleteJoinTableRecords($identifier);
-
-        return (bool) $this->conn->delete($tableName, $id, $types);
+        $this->conn->delete($tableName, $id, $types);
     }
 
     /**
@@ -653,8 +655,6 @@ class BasicEntityPersister implements EntityPersister
                 }
             }
 
-            $newValId = null;
-
             if ($newVal !== null) {
                 $newValId = $uow->getEntityIdentifier($newVal);
             }
@@ -667,11 +667,24 @@ class BasicEntityPersister implements EntityPersister
                 $targetColumn = $joinColumn['referencedColumnName'];
                 $quotedColumn = $this->quoteStrategy->getJoinColumnName($joinColumn, $this->class, $this->platform);
 
-                $this->quotedColumns[$sourceColumn]  = $quotedColumn;
-                $this->columnTypes[$sourceColumn]    = $targetClass->getTypeOfColumn($targetColumn);
-                $result[$owningTable][$sourceColumn] = $newValId
-                    ? $newValId[$targetClass->getFieldForColumn($targetColumn)]
-                    : null;
+                $this->quotedColumns[$sourceColumn] = $quotedColumn;
+                $this->columnTypes[$sourceColumn]   = $targetClass->getTypeOfColumn($targetColumn);
+
+                switch (true) {
+                    case $newVal === null:
+                        $value = null;
+                        break;
+
+                    case $targetClass->containsForeignIdentifier:
+                        $value = $newValId[$targetClass->getFieldForColumn($targetColumn)];
+                        break;
+
+                    default:
+                        $value = $newValId[$targetClass->fieldNames[$targetColumn]];
+                        break;
+                }
+
+                $result[$owningTable][$sourceColumn] = $value;
             }
         }
 
@@ -1563,14 +1576,15 @@ class BasicEntityPersister implements EntityPersister
     public function getSelectConditionStatementSQL($field, $value, $assoc = null, $comparison = null)
     {
         $selectedColumns = array();
-        $columns    = $this->getSelectConditionStatementColumnSQL($field, $assoc);
+        $columns         = $this->getSelectConditionStatementColumnSQL($field, $assoc);
 
-        if (count($columns)>1 && $comparison === Comparison::IN){
-            throw ORMException::cantUseInOperatorOnComposteKeys();
+        if (count($columns)>1 && $comparison === Comparison::IN) {
+            throw ORMException::cantUseInOperatorOnCompositeKeys();
         }
 
         foreach ($columns as $column) {
             $placeholder  = '?';
+
             if (isset($this->class->fieldMappings[$field]['requireSQLConversion'])) {
                 $placeholder = Type::getType($this->class->getTypeOfField($field))->convertToDatabaseValueSQL($placeholder, $this->platform);
             }
@@ -1601,6 +1615,7 @@ class BasicEntityPersister implements EntityPersister
                 $selectedColumns[] = $in;
                 continue;
             }
+
             if ($value === null) {
                 $selectedColumns[] = sprintf('%s IS NULL' , $column);
                 continue;
@@ -1638,8 +1653,6 @@ class BasicEntityPersister implements EntityPersister
             if ( ! $association['isOwningSide']) {
                 throw ORMException::invalidFindByInverseAssociation($this->class->name, $field);
             }
-
-            $joinColumn = $association['joinColumns'][0];
             $className  = (isset($association['inherited']))
                 ? $association['inherited']
                 : $this->class->name;
@@ -1648,6 +1661,7 @@ class BasicEntityPersister implements EntityPersister
             foreach ($association['joinColumns'] as $joinColumn) {
                 $columns[] = $this->getSQLTableAlias($className) . '.' . $this->quoteStrategy->getJoinColumnName($joinColumn, $this->class, $this->platform);
             }
+
             return $columns;
         }
 
@@ -1789,12 +1803,8 @@ class BasicEntityPersister implements EntityPersister
                 $assoc = $this->class->associationMappings[$field];
 
                 $targetPersister = $this->em->getUnitOfWork()->getEntityPersister($assoc['targetEntity']);
+                $parameters = $targetPersister->expandParameters($assoc['isOwningSide'] ? $assoc['targetToSourceKeyColumns'] : $assoc['sourceToTargetKeyColumns']);
 
-                if ($assoc['isOwningSide']) {
-                    $parameters = $targetPersister->expandParameters($assoc['targetToSourceKeyColumns']);
-                }else{
-                    $parameters = $targetPersister->expandParameters($assoc['sourceToTargetKeyColumns']);
-                }
                 $types = array_merge($types, $parameters[1]);
                 break;
 
@@ -1809,6 +1819,7 @@ class BasicEntityPersister implements EntityPersister
                 return $type + Connection::ARRAY_PARAM_OFFSET;
             }, $types);
         }
+
         return $types;
     }
 
@@ -1827,6 +1838,7 @@ class BasicEntityPersister implements EntityPersister
             foreach ($value as $itemValue) {
                 $newValue = array_merge($newValue, $this->getValues($itemValue));
             }
+
             return array($newValue);
         }
 
@@ -1837,6 +1849,7 @@ class BasicEntityPersister implements EntityPersister
                 foreach ($class->getIdentifierValues($value) as $innerValue) {
                     $newValue = array_merge($newValue, $this->getValues($innerValue));
                 }
+
                 return $newValue;
             }
         }

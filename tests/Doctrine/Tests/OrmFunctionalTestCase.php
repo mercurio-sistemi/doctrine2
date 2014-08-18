@@ -187,6 +187,12 @@ abstract class OrmFunctionalTestCase extends OrmTestCase
             'Doctrine\Tests\Models\Tweet\User',
             'Doctrine\Tests\Models\Tweet\Tweet'
         ),
+        'geonames' => array(
+            'Doctrine\Tests\Models\GeoNames\Country',
+            'Doctrine\Tests\Models\GeoNames\Admin1',
+            'Doctrine\Tests\Models\GeoNames\Admin1AlternateName',
+            'Doctrine\Tests\Models\GeoNames\City'
+        )
         'ddc2504' => array(
             'Doctrine\Tests\Models\DDC2504\DDC2504RootClass',
             'Doctrine\Tests\Models\DDC2504\DDC2504ChildClass',
@@ -218,8 +224,7 @@ abstract class OrmFunctionalTestCase extends OrmTestCase
      */
     protected function tearDown()
     {
-        $conn     = static::$_sharedConn;
-        $platform = $conn->getDatabasePlatform();
+        $conn = static::$_sharedConn;
 
         $this->_sqlLoggerStack->enabled = false;
 
@@ -286,7 +291,7 @@ abstract class OrmFunctionalTestCase extends OrmTestCase
             $conn->executeUpdate('DELETE FROM navigation_countries');
         }
         if (isset($this->_usedModelSets['directorytree'])) {
-            $conn->executeUpdate('DELETE FROM ' . $platform->quoteIdentifier("file"));
+            $conn->executeUpdate('DELETE FROM ' . $this->_em->getConnection()->getDatabasePlatform()->quoteIdentifier("file"));
             // MySQL doesn't know deferred deletions therefore only executing the second query gives errors.
             $conn->executeUpdate('DELETE FROM Directory WHERE parentDirectory_id IS NOT NULL');
             $conn->executeUpdate('DELETE FROM Directory');
@@ -349,6 +354,13 @@ abstract class OrmFunctionalTestCase extends OrmTestCase
             $conn->executeUpdate('DELETE FROM cache_city');
             $conn->executeUpdate('DELETE FROM cache_state');
             $conn->executeUpdate('DELETE FROM cache_country');
+        }
+
+        if (isset($this->_usedModelSets['geonames'])) {
+            $conn->executeUpdate('DELETE FROM geonames_admin1_alternate_name');
+            $conn->executeUpdate('DELETE FROM geonames_admin1');
+            $conn->executeUpdate('DELETE FROM geonames_city');
+            $conn->executeUpdate('DELETE FROM geonames_country');
         }
 
         if (isset($this->_usedModelSets['quote'])) {

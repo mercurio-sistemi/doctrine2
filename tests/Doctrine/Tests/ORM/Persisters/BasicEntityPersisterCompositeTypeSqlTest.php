@@ -46,6 +46,7 @@ class BasicEntityPersisterCompositeTypeSqlTest extends \Doctrine\Tests\OrmTestCa
         $statement = $this->_persister->getSelectConditionStatementSQL('admin1', null, array(), Comparison::IS);
         $this->assertEquals('t0.admin1 IS NULL AND t0.country IS NULL', $statement);
     }
+
     public function testSelectConditionStatementNeqNull()
     {
         $statement = $this->_persister->getSelectConditionStatementSQL('admin1', null, array(), Comparison::NEQ);
