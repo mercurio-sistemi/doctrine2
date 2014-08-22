@@ -507,7 +507,8 @@ abstract class OrmFunctionalTestCase extends OrmTestCase
         }
 
         $config->setMetadataDriverImpl($config->newDefaultAnnotationDriver(array(
-            realpath(__DIR__ . '/Models/Cache')
+            realpath(__DIR__ . '/Models/Cache'),
+            realpath(__DIR__ . '/Models/GeoNames')
         ), true));
 
         $conn = static::$_sharedConn;

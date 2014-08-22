@@ -323,6 +323,6 @@ class ORMException extends Exception
      */
     public static function cantUseInOperatorOnCompositeKeys()
     {
-        return new self("Can't use IN operator on entities that have composte keys.");
+        return new self("Can't use IN operator on entities that have composite keys.");
     }
 }

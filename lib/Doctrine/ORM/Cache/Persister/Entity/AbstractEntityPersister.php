@@ -34,6 +34,7 @@ use Doctrine\ORM\Persisters\Entity\EntityPersister;
 
 use Doctrine\Common\Util\ClassUtils;
 use Doctrine\Common\Collections\Criteria;
+use Doctrine\ORM\Cache\CacheException;
 
 /**
  * @author Fabio B. Silva <fabio.bat.silva@gmail.com>
@@ -231,6 +232,14 @@ abstract class AbstractEntityPersister implements CachedEntityPersister
 
         if ($className !== $this->class->name) {
             $class = $this->metadataFactory->getMetadataFor($className);
+        }
+
+        if ($class->containsForeignIdentifier) {
+            foreach ($class->associationMappings as $name => $assoc) {
+                if (!empty($assoc['id']) && !isset($assoc['cache'])) {
+                    throw CacheException::nonCacheableEntityAssociation($class->name, $name);
+                }
+            }
         }
 
         $entry  = $this->hydrator->buildCacheEntry($class, $key, $entity);
