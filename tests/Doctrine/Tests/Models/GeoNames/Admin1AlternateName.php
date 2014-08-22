@@ -5,6 +5,7 @@ namespace Doctrine\Tests\Models\GeoNames;
 /**
  * @Entity
  * @Table(name="geonames_admin1_alternate_name")
+ * @Cache
  */
 class Admin1AlternateName
 {
@@ -13,7 +14,7 @@ class Admin1AlternateName
      * @Column(type="string", length=25)
      * @GeneratedValue(strategy="NONE")
      */
-    public $id;
+    protected $id;
 
     /**
      * @ManyToOne(targetEntity="Admin1", inversedBy="names")
@@ -21,13 +22,14 @@ class Admin1AlternateName
      *    @JoinColumn(name="admin1", referencedColumnName="id"),
      *    @JoinColumn(name="country", referencedColumnName="country")
      * })
+     * @Cache
      */
-    public $admin1;
+    protected $admin1;
 
     /**
      * @Column(type="string", length=255);
      */
-    public $name;
+    protected $name;
 
 
     public function __construct($id, $name, Admin1 $admin1)
@@ -37,5 +39,18 @@ class Admin1AlternateName
         $this->admin1 = $admin1;
     }
 
+    public function getId()
+    {
+        return $this->id;
+    }
 
+    public function getAdmin1()
+    {
+        return $this->admin1;
+    }
+
+    public function getName()
+    {
+        return $this->name;
+    }
 }

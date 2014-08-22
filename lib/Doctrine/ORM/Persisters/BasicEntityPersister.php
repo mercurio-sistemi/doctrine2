@@ -1577,7 +1577,7 @@ class BasicEntityPersister implements EntityPersister
         $selectedColumns = array();
         $columns         = $this->getSelectConditionStatementColumnSQL($field, $assoc);
 
-        if (count($columns)>1 && $comparison === Comparison::IN) {
+        if (count($columns) > 1 && $comparison === Comparison::IN) {
             throw ORMException::cantUseInOperatorOnCompositeKeys();
         }
 
@@ -1589,12 +1589,13 @@ class BasicEntityPersister implements EntityPersister
             }
 
             if ($comparison !== null) {
-
                 // special case null value handling
                 if (($comparison === Comparison::EQ || $comparison === Comparison::IS) && $value === null) {
                     $selectedColumns[] = $column . ' IS NULL';
                     continue;
-                } else if ($comparison === Comparison::NEQ && $value === null) {
+                }
+
+                if ($comparison === Comparison::NEQ && $value === null) {
                     $selectedColumns[] = $column . ' IS NOT NULL';
                     continue;
                 }
@@ -1607,22 +1608,20 @@ class BasicEntityPersister implements EntityPersister
                 $in = sprintf('%s IN (%s)' , $column, $placeholder);
 
                 if (false !== array_search(null, $value, true)) {
-                    $selectedColumns[] = sprintf('(%s OR %s IS NULL)' , $in, $column);
+                    $selectedColumns[] = sprintf('(%s OR %s IS NULL)', $in, $column);
                     continue;
-
                 }
 
                 $selectedColumns[] = $in;
                 continue;
-
             }
 
             if ($value === null) {
-                $selectedColumns[] = sprintf('%s IS NULL' , $column);
+                $selectedColumns[] = sprintf('%s IS NULL', $column);
                 continue;
             }
 
-            $selectedColumns[] = sprintf('%s = %s' , $column, $placeholder);
+            $selectedColumns[] = sprintf('%s = %s', $column, $placeholder);
         }
 
         return implode(' AND ', $selectedColumns);

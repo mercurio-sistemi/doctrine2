@@ -5,6 +5,7 @@ namespace Doctrine\Tests\Models\GeoNames;
 /**
  * @Entity
  * @Table(name="geonames_admin1")
+ * @Cache
  */
 class Admin1
 {
@@ -19,11 +20,13 @@ class Admin1
      * @Id
      * @ManyToOne(targetEntity="Country")
      * @JoinColumn(name="country", referencedColumnName="id")
+     * @Cache
      */
     public $country;
 
     /**
      * @OneToMany(targetEntity="Admin1AlternateName", mappedBy="admin1")
+     * @Cache
      */
     public $names = array();
 
@@ -39,4 +42,28 @@ class Admin1
         $this->country = $country;
     }
 
+    public function getCountry()
+    {
+        return $this->country;
+    }
+
+    public function getNames()
+    {
+        return $this->names;
+    }
+
+    public function getId()
+    {
+        return $this->id;
+    }
+
+    public function getName()
+    {
+        return $this->name;
+    }
+
+    public function addName(Admin1AlternateName $name)
+    {
+        $this->names[] = $name;
+    }
 }

@@ -5,6 +5,7 @@ namespace Doctrine\Tests\Models\GeoNames;
 /**
  * @Entity
  * @Table(name="geonames_city")
+ * @Cache
  */
 class City
 {
@@ -13,13 +14,14 @@ class City
      * @Column(type="string", length=25)
      * @GeneratedValue(strategy="NONE")
      */
-    private $id;
+    protected $id;
 
     /**
      * @ManyToOne(targetEntity="Country")
      * @JoinColumn(name="country", referencedColumnName="id")
+     * @Cache
      */
-    private $country;
+    protected $country;
 
     /**
      * @ManyToOne(targetEntity="Admin1")
@@ -27,13 +29,14 @@ class City
      *   @JoinColumn(name="admin1", referencedColumnName="id"),
      *   @JoinColumn(name="country", referencedColumnName="country")
      * })
+     * @Cache
      */
-    private $admin1;
+    protected $admin1;
 
     /**
      * @Column(type="string", length=255);
      */
-    private $name;
+    protected $name;
 
 
     public function __construct($id, $name)
@@ -42,5 +45,23 @@ class City
         $this->name = $name;
     }
 
+    public function getId()
+    {
+        return $this->id;
+    }
 
+    public function getCountry()
+    {
+        return $this->country;
+    }
+
+    public function getAdmin1()
+    {
+        return $this->admin1;
+    }
+
+    public function getName()
+    {
+        return $this->name;
+    }
 }

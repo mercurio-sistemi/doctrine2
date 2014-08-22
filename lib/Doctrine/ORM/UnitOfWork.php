@@ -2499,6 +2499,34 @@ class UnitOfWork implements PropertyChangedListener
     }
 
     /**
+     * Creates a flat array of identifying keys for an entity.
+     * @param ClassMetadata $class
+     * @param array $data
+     * @return array
+     */
+    private function getFlatEntityIdentifier(ClassMetadata $class, array $data)
+    {
+        $id = array();
+
+        foreach ($class->identifier as $fieldName) {
+            // when $data comes from second-level cache, $data[$fieldName] is already a valid entity
+            if (isset($class->associationMappings[$fieldName]) && isset($data[$fieldName]) && is_object($data[$fieldName])) {
+                $id[$fieldName] = implode(' ', $this->getEntityIdentifier($data[$fieldName]));
+            } elseif (isset($class->associationMappings[$fieldName])) {
+                $tmpId = array();
+                foreach ($class->associationMappings[$fieldName]['joinColumns'] as $joinColumn) {
+                    $tmpId[] = $data[$joinColumn['name']];
+                }
+                $id[$fieldName] = implode(' ', $tmpId);
+             } else {
+                $id[$fieldName] = $data[$fieldName];
+            }
+        }
+
+        return $id;
+    }
+
+    /**
      * INTERNAL:
      * Creates an entity. Used for reconstitution of persistent entities.
      *
@@ -2519,22 +2547,7 @@ class UnitOfWork implements PropertyChangedListener
         $class = $this->em->getClassMetadata($className);
         //$isReadOnly = isset($hints[Query::HINT_READ_ONLY]);
 
-        if ($class->isIdentifierComposite) {
-            $id = array();
-
-            foreach ($class->identifier as $fieldName) {
-                $id[$fieldName] = isset($class->associationMappings[$fieldName])
-                    ? $data[$class->associationMappings[$fieldName]['joinColumns'][0]['name']]
-                    : $data[$fieldName];
-            }
-        } else {
-            $id = isset($class->associationMappings[$class->identifier[0]])
-                ? $data[$class->associationMappings[$class->identifier[0]]['joinColumns'][0]['name']]
-                : $data[$class->identifier[0]];
-
-            $id = array($class->identifier[0] => $id);
-        }
-
+        $id = $this->getFlatEntityIdentifier($class, $data);
         $idHash = implode(' ', $id);
 
         if (isset($this->identityMap[$class->rootEntityName][$idHash])) {
@@ -2672,6 +2685,10 @@ class UnitOfWork implements PropertyChangedListener
                             } else {
                                 $associatedId[$targetClass->fieldNames[$targetColumn]] = $joinColumnValue;
                             }
+                        } elseif ($targetClass->containsForeignIdentifier && in_array($targetClass->getFieldForColumn($targetColumn), $targetClass->identifier, true)) {
+                            // the missing key is part of target's entity primary key
+                            $associatedId = array();
+                            break;
                         }
                     }
 

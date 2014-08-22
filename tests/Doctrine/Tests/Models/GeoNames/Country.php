@@ -5,6 +5,7 @@ namespace Doctrine\Tests\Models\GeoNames;
 /**
  * @Entity
  * @Table(name="geonames_country")
+ * @Cache
  */
 class Country
 {
@@ -13,12 +14,12 @@ class Country
      * @Column(type="string", length=2)
      * @GeneratedValue(strategy="NONE")
      */
-    public $id;
+    protected $id;
 
     /**
      * @Column(type="string", length=255);
      */
-    public $name;
+    protected $name;
 
     public function __construct($id, $name)
     {
@@ -26,5 +27,14 @@ class Country
         $this->name = $name;
     }
 
+    public function getId()
+    {
+        return $this->id;
+    }
+
+    public function getName()
+    {
+        return $this->name;
+    }
 }
 
