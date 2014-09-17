@@ -297,7 +297,15 @@ class UnitOfWork implements PropertyChangedListener
         }
 
         // Now we need a commit order to maintain referential integrity
-        $commitOrder = $this->getCommitOrder();
+        $entityChangeSet = null;
+        // Compute changes done since last commit.
+        if (is_object($entity)) {
+            $entityChangeSet = array($entity);
+        } elseif (is_array($entity)) {
+            $entityChangeSet = $entity;
+        }
+
+        $commitOrder = $this->getCommitOrder($entityChangeSet);
 
         $conn = $this->em->getConnection();
         $conn->beginTransaction();
