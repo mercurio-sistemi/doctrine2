@@ -49,9 +49,8 @@ class SecondLevelCacheCompositePrimaryKeyWithAssociationsTest extends OrmFunctio
 
     }
 
-    public function testFindBy()
+    public function testFindByReturnsCachedEntity()
     {
-
         $admin1Repo = $this->_em->getRepository('Doctrine\Tests\Models\GeoNames\Admin1');
 
         $queries = $this->getCurrentQueryCount();
@@ -64,15 +63,16 @@ class SecondLevelCacheCompositePrimaryKeyWithAssociationsTest extends OrmFunctio
 
         $this->_em->clear();
 
+        $queries = $this->getCurrentQueryCount();
+
         $admin1Rome = $admin1Repo->findOneBy(array('country' => 'IT', 'id' => 1));
 
         $this->assertEquals("Italy", $admin1Rome->getCountry()->getName());
         $this->assertEquals(2, count($admin1Rome->getNames()));
-        $this->assertEquals($queries+3, $this->getCurrentQueryCount());
-
+        $this->assertEquals($queries, $this->getCurrentQueryCount());
     }
 
-    protected function evictRegions()
+    private function evictRegions()
     {
         $this->cache->evictQueryRegions();
         $this->cache->evictEntityRegions();

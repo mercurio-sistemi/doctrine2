@@ -36,7 +36,7 @@ class BasicEntityPersisterCompositeTypeParametersTest extends \Doctrine\Tests\Or
 
     }
 
-    public function testExpandParameters()
+    public function testExpandParametersWillExpandCompositeEntityKeys()
     {
         $country = new Country("IT", "Italy");
         $admin1 = new Admin1(10, "Rome", $country);
@@ -50,7 +50,7 @@ class BasicEntityPersisterCompositeTypeParametersTest extends \Doctrine\Tests\Or
         $this->assertEquals(array(10, 'IT'), $values);
     }
 
-    public function testExpandCriteriaParameters()
+    public function testExpandCriteriaParametersWillExpandCompositeEntityKeys()
     {
         $country = new Country("IT", "Italy");
         $admin1 = new Admin1(10, "Rome", $country);

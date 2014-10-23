@@ -348,7 +348,11 @@ class BasicEntityPersister implements EntityPersister
              . ' FROM '  . $tableName
              . ' WHERE ' . implode(' = ? AND ', $identifier) . ' = ?';
 
-        $flatId = $this->identifierFlattener->flattenIdentifier($versionedClass, (array) $id);
+        if(!is_array($id)){
+            $id = array($this->class->identifier[0] => $id);
+        }
+
+        $flatId = $this->identifierFlattener->flattenIdentifier($versionedClass, $id);
 
         $value = $this->conn->fetchColumn($sql, array_values($flatId));
 
@@ -1578,6 +1582,10 @@ class BasicEntityPersister implements EntityPersister
         $columns         = $this->getSelectConditionStatementColumnSQL($field, $assoc);
 
         if (count($columns) > 1 && $comparison === Comparison::IN) {
+            /*
+             *  @todo try to support multi-column IN expressions.
+             *  Example: (col1, col2) IN (('val1A', 'val2A'), ('val1B', 'val2B'))
+             */
             throw ORMException::cantUseInOperatorOnCompositeKeys();
         }
 
@@ -1588,14 +1596,14 @@ class BasicEntityPersister implements EntityPersister
                 $placeholder = Type::getType($this->class->getTypeOfField($field))->convertToDatabaseValueSQL($placeholder, $this->platform);
             }
 
-            if ($comparison !== null) {
+            if (null !== $comparison) {
                 // special case null value handling
-                if (($comparison === Comparison::EQ || $comparison === Comparison::IS) && $value === null) {
+                if (($comparison === Comparison::EQ || $comparison === Comparison::IS) && null ===$value ) {
                     $selectedColumns[] = $column . ' IS NULL';
                     continue;
                 }
 
-                if ($comparison === Comparison::NEQ && $value === null) {
+                if ($comparison === Comparison::NEQ && null === $value) {
                     $selectedColumns[] = $column . ' IS NOT NULL';
                     continue;
                 }
@@ -1616,7 +1624,7 @@ class BasicEntityPersister implements EntityPersister
                 continue;
             }
 
-            if ($value === null) {
+            if (null === $value) {
                 $selectedColumns[] = sprintf('%s IS NULL', $column);
                 continue;
             }
@@ -1842,7 +1850,7 @@ class BasicEntityPersister implements EntityPersister
         }
 
         if (is_object($value) && $this->em->getMetadataFactory()->hasMetadataFor(ClassUtils::getClass($value))) {
-            $class = $this->em->getClassMetadata(ClassUtils::getClass($value));
+            $class = $this->em->getClassMetadata(get_class($value));
             if ($class->isIdentifierComposite) {
                 $newValue = array();
                 foreach ($class->getIdentifierValues($value) as $innerValue) {

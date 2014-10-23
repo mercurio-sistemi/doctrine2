@@ -70,17 +70,21 @@ final class IdentifierFlattener
     {
         $flatId = array();
 
-        foreach ($id as $idField => $idValue) {
-            if (isset($class->associationMappings[$idField]) && is_object($idValue)) {
+        foreach ($class->identifier as $field) {
+            if (isset($class->associationMappings[$field]) && isset($id[$field]) && is_object($id[$field])) {
                 $targetClassMetadata = $this->metadataFactory->getMetadataFor(
-                    $class->associationMappings[$idField]['targetEntity']
+                    $class->associationMappings[$field]['targetEntity']
                 );
-
-                $associatedId = $this->unitOfWork->getEntityIdentifier($idValue);
-
-                $flatId[$idField] = $associatedId[$targetClassMetadata->identifier[0]];
+                $associatedId = $this->flattenIdentifier($targetClassMetadata, $this->unitOfWork->getEntityIdentifier($id[$field]));
+                $flatId[$field] = implode(' ', $associatedId);
+            } elseif (isset($class->associationMappings[$field])) {
+                $associatedId = array();
+                foreach ($class->associationMappings[$field]['joinColumns'] as $joinColumn) {
+                    $associatedId[] = $id[$joinColumn['name']];
+                }
+                $flatId[$field] = implode(' ', $associatedId);
             } else {
-                $flatId[$idField] = $idValue;
+                $flatId[$field] = $id[$field];
             }
         }
 
