@@ -14,7 +14,7 @@ class Admin1AlternateName
      * @Column(type="string", length=25)
      * @GeneratedValue(strategy="NONE")
      */
-    protected $id;
+    public $id;
 
     /**
      * @ManyToOne(targetEntity="Admin1", inversedBy="names")
@@ -24,33 +24,18 @@ class Admin1AlternateName
      * })
      * @Cache
      */
-    protected $admin1;
+    public $admin1;
 
     /**
      * @Column(type="string", length=255);
      */
-    protected $name;
+    public $name;
 
 
     public function __construct($id, $name, Admin1 $admin1)
     {
-        $this->id = $id;
-        $this->name = $name;
+        $this->id     = $id;
+        $this->name   = $name;
         $this->admin1 = $admin1;
-    }
-
-    public function getId()
-    {
-        return $this->id;
-    }
-
-    public function getAdmin1()
-    {
-        return $this->admin1;
-    }
-
-    public function getName()
-    {
-        return $this->name;
     }
 }

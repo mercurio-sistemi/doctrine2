@@ -348,7 +348,7 @@ class BasicEntityPersister implements EntityPersister
              . ' FROM '  . $tableName
              . ' WHERE ' . implode(' = ? AND ', $identifier) . ' = ?';
 
-        if(!is_array($id)){
+        if (!is_array($id)) {
             $id = array($this->class->identifier[0] => $id);
         }
 
@@ -882,7 +882,7 @@ class BasicEntityPersister implements EntityPersister
         }
 
         foreach ($types as $type) {
-            list($field, $value) = $type;
+            list ($field, $value) = $type;
             $sqlTypes = array_merge($sqlTypes, $this->getTypes($field, $value));
         }
 
@@ -1590,7 +1590,7 @@ class BasicEntityPersister implements EntityPersister
         }
 
         foreach ($columns as $column) {
-            $placeholder  = '?';
+            $placeholder = '?';
 
             if (isset($this->class->fieldMappings[$field]['requireSQLConversion'])) {
                 $placeholder = Type::getType($this->class->getTypeOfField($field))->convertToDatabaseValueSQL($placeholder, $this->platform);
@@ -1598,7 +1598,7 @@ class BasicEntityPersister implements EntityPersister
 
             if (null !== $comparison) {
                 // special case null value handling
-                if (($comparison === Comparison::EQ || $comparison === Comparison::IS) && null ===$value ) {
+                if (($comparison === Comparison::EQ || $comparison === Comparison::IS) && null ===$value) {
                     $selectedColumns[] = $column . ' IS NULL';
                     continue;
                 }
@@ -1613,7 +1613,7 @@ class BasicEntityPersister implements EntityPersister
             }
 
             if (is_array($value)) {
-                $in = sprintf('%s IN (%s)' , $column, $placeholder);
+                $in = sprintf('%s IN (%s)', $column, $placeholder);
 
                 if (false !== array_search(null, $value, true)) {
                     $selectedColumns[] = sprintf('(%s OR %s IS NULL)', $in, $column);
@@ -1810,9 +1810,8 @@ class BasicEntityPersister implements EntityPersister
                 $assoc = $this->class->associationMappings[$field];
 
                 $targetPersister = $this->em->getUnitOfWork()->getEntityPersister($assoc['targetEntity']);
-                $parameters = $targetPersister->expandParameters($assoc['isOwningSide']?$assoc['targetToSourceKeyColumns']:$assoc['sourceToTargetKeyColumns']);
-
-                $types = array_merge($types, $parameters[1]);
+                $parameters      = $targetPersister->expandParameters($assoc['isOwningSide']?$assoc['targetToSourceKeyColumns']:$assoc['sourceToTargetKeyColumns']);
+                $types           = array_merge($types, $parameters[1]);
                 break;
 
             default:

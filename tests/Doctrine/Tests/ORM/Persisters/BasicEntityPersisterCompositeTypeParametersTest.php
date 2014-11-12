@@ -39,11 +39,11 @@ class BasicEntityPersisterCompositeTypeParametersTest extends \Doctrine\Tests\Or
     public function testExpandParametersWillExpandCompositeEntityKeys()
     {
         $country = new Country("IT", "Italy");
-        $admin1 = new Admin1(10, "Rome", $country);
+        $admin1  = new Admin1(10, "Rome", $country);
 
 
-        list($values, $types) = $this->_persister->expandParameters(array(
-            'admin1'=> $admin1
+        list ($values, $types) = $this->_persister->expandParameters(array(
+            'admin1' => $admin1
         ));
 
         $this->assertEquals(array('integer', 'string'), $types);
@@ -53,17 +53,15 @@ class BasicEntityPersisterCompositeTypeParametersTest extends \Doctrine\Tests\Or
     public function testExpandCriteriaParametersWillExpandCompositeEntityKeys()
     {
         $country = new Country("IT", "Italy");
-        $admin1 = new Admin1(10, "Rome", $country);
+        $admin1  = new Admin1(10, "Rome", $country);
 
         $criteria = Criteria::create();
 
         $criteria->andWhere(Criteria::expr()->eq("admin1", $admin1));
 
-        list($values, $types) = $this->_persister->expandCriteriaParameters($criteria);
+        list ($values, $types) = $this->_persister->expandCriteriaParameters($criteria);
 
         $this->assertEquals(array('integer', 'string'), $types);
         $this->assertEquals(array(10, 'IT'), $values);
     }
-
 }
-

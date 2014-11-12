@@ -14,27 +14,16 @@ class Country
      * @Column(type="string", length=2)
      * @GeneratedValue(strategy="NONE")
      */
-    protected $id;
+    public $id;
 
     /**
      * @Column(type="string", length=255);
      */
-    protected $name;
+    public $name;
 
     public function __construct($id, $name)
     {
-        $this->id = $id;
+        $this->id   = $id;
         $this->name = $name;
     }
-
-    public function getId()
-    {
-        return $this->id;
-    }
-
-    public function getName()
-    {
-        return $this->name;
-    }
 }
-

@@ -14,14 +14,14 @@ class City
      * @Column(type="string", length=25)
      * @GeneratedValue(strategy="NONE")
      */
-    protected $id;
+    public $id;
 
     /**
      * @ManyToOne(targetEntity="Country")
      * @JoinColumn(name="country", referencedColumnName="id")
      * @Cache
      */
-    protected $country;
+    public $country;
 
     /**
      * @ManyToOne(targetEntity="Admin1")
@@ -31,37 +31,17 @@ class City
      * })
      * @Cache
      */
-    protected $admin1;
+    public $admin1;
 
     /**
      * @Column(type="string", length=255);
      */
-    protected $name;
+    public $name;
 
 
     public function __construct($id, $name)
     {
-        $this->id = $id;
+        $this->id   = $id;
         $this->name = $name;
-    }
-
-    public function getId()
-    {
-        return $this->id;
-    }
-
-    public function getCountry()
-    {
-        return $this->country;
-    }
-
-    public function getAdmin1()
-    {
-        return $this->admin1;
-    }
-
-    public function getName()
-    {
-        return $this->name;
     }
 }

@@ -36,8 +36,8 @@ class SecondLevelCacheCompositePrimaryKeyWithAssociationsTest extends OrmFunctio
         $name1 = new Admin1AlternateName(1, "Roma", $admin1);
         $name2 = new Admin1AlternateName(2, "Rome", $admin1);
 
-        $admin1->addName($name1);
-        $admin1->addName($name2);
+        $admin1->names[] = $name1;
+        $admin1->names[] = $name2;
 
         $this->_em->persist($admin1);
         $this->_em->persist($name1);
@@ -57,9 +57,9 @@ class SecondLevelCacheCompositePrimaryKeyWithAssociationsTest extends OrmFunctio
 
         $admin1Rome = $admin1Repo->findOneBy(array('country' => 'IT', 'id' => 1));
 
-        $this->assertEquals("Italy", $admin1Rome->getCountry()->getName());
-        $this->assertEquals(2, count($admin1Rome->getNames()));
-        $this->assertEquals($queries+3, $this->getCurrentQueryCount());
+        $this->assertEquals("Italy", $admin1Rome->country->name);
+        $this->assertEquals(2, count($admin1Rome->names));
+        $this->assertEquals($queries + 3, $this->getCurrentQueryCount());
 
         $this->_em->clear();
 
@@ -67,8 +67,8 @@ class SecondLevelCacheCompositePrimaryKeyWithAssociationsTest extends OrmFunctio
 
         $admin1Rome = $admin1Repo->findOneBy(array('country' => 'IT', 'id' => 1));
 
-        $this->assertEquals("Italy", $admin1Rome->getCountry()->getName());
-        $this->assertEquals(2, count($admin1Rome->getNames()));
+        $this->assertEquals("Italy", $admin1Rome->country->name);
+        $this->assertEquals(2, count($admin1Rome->names));
         $this->assertEquals($queries, $this->getCurrentQueryCount());
     }
 

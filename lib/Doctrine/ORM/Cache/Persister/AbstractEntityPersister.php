@@ -109,6 +109,13 @@ abstract class AbstractEntityPersister implements CachedEntityPersister
     protected $joinedAssociations;
 
     /**
+     * Cache used to store different Doctrine\ORM\Mapping\ClassMetadata encountred.
+     *
+     * @var array
+     */
+    private $classMetadataCache = array();
+
+    /**
      * @param \Doctrine\ORM\Persisters\EntityPersister $persister The entity persister to cache.
      * @param \Doctrine\ORM\Cache\Region               $region    The entity cache region.
      * @param \Doctrine\ORM\EntityManagerInterface     $em        The entity manager.
@@ -131,6 +138,8 @@ abstract class AbstractEntityPersister implements CachedEntityPersister
         $this->timestampRegion  = $cacheFactory->getTimestampRegion();
         $this->hydrator         = $cacheFactory->buildEntityHydrator($em, $class);
         $this->timestampKey     = new TimestampCacheKey($this->class->getTableName());
+
+        $this->classMetadataCache[$class->name] = $class;
     }
 
     /**
@@ -226,12 +235,13 @@ abstract class AbstractEntityPersister implements CachedEntityPersister
      */
     public function storeEntityCache($entity, EntityCacheKey $key)
     {
-        $class      = $this->class;
-        $className  = ClassUtils::getClass($entity);
+        $className = ClassUtils::getClass($entity);
 
-        if ($className !== $this->class->name) {
-            $class = $this->metadataFactory->getMetadataFor($className);
+        if (!isset($this->classMetadataCache[$className])) {
+            $this->classMetadataCache[$className] = $this->metadataFactory->getMetadataFor($className);
         }
+
+        $class = $this->classMetadataCache[$className];
 
         if ($class->containsForeignIdentifier) {
             foreach ($class->associationMappings as $name => $assoc) {
@@ -455,12 +465,13 @@ abstract class AbstractEntityPersister implements CachedEntityPersister
     {
         $cacheKey   = new EntityCacheKey($this->class->rootEntityName, $identifier);
         $cacheEntry = $this->region->get($cacheKey);
-        $class      = $this->class;
 
         if ($cacheEntry !== null) {
-            if ($cacheEntry->class !== $this->class->name) {
-                $class = $this->metadataFactory->getMetadataFor($cacheEntry->class);
+            if (!isset($this->classMetadataCache[$cacheEntry->class])) {
+                $this->classMetadataCache[$cacheEntry->class] = $this->metadataFactory->getMetadataFor($cacheEntry->class);
             }
+
+            $class = $this->classMetadataCache[$cacheEntry->class];
 
             if (($entity = $this->hydrator->loadCacheEntry($class, $cacheKey, $cacheEntry, $entity)) !== null) {
                 if ($this->cacheLogger) {
@@ -477,12 +488,13 @@ abstract class AbstractEntityPersister implements CachedEntityPersister
             return null;
         }
 
-        $class      = $this->class;
-        $className  = ClassUtils::getClass($entity);
+        $className = ClassUtils::getClass($entity);
 
-        if ($className !== $this->class->name) {
-            $class = $this->metadataFactory->getMetadataFor($className);
+        if (!isset($this->classMetadataCache[$className])) {
+            $this->classMetadataCache[$className] = $this->metadataFactory->getMetadataFor($className);
         }
+
+        $class = $this->classMetadataCache[$className];
 
         $cacheEntry = $this->hydrator->buildCacheEntry($class, $cacheKey, $entity);
         $cached     = $this->region->put($cacheKey, $cacheEntry);
@@ -641,5 +653,4 @@ abstract class AbstractEntityPersister implements CachedEntityPersister
     {
         $this->persister->refresh($id, $entity, $lockMode);
     }
-
 }

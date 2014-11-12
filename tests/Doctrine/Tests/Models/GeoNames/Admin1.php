@@ -37,33 +37,8 @@ class Admin1
 
     public function __construct($id, $name, Country $country)
     {
-        $this->id = $id;
-        $this->name = $name;
+        $this->id      = $id;
+        $this->name    = $name;
         $this->country = $country;
-    }
-
-    public function getCountry()
-    {
-        return $this->country;
-    }
-
-    public function getNames()
-    {
-        return $this->names;
-    }
-
-    public function getId()
-    {
-        return $this->id;
-    }
-
-    public function getName()
-    {
-        return $this->name;
-    }
-
-    public function addName(Admin1AlternateName $name)
-    {
-        $this->names[] = $name;
     }
 }

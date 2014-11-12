@@ -9,6 +9,7 @@ use Doctrine\Tests\Models\Cache\City;
 use Doctrine\Tests\Models\Cache\Flight;
 use Doctrine\ORM\ORMException;
 use Doctrine\ORM\Utility\IdentifierFlattener;
+
 /**
  * Test the IdentifierFlattener utility class
  *

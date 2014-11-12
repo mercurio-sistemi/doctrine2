@@ -60,5 +60,4 @@ class BasicEntityPersisterCompositeTypeSqlTest extends \Doctrine\Tests\OrmTestCa
     {
         $this->_persister->getSelectConditionStatementSQL('admin1', array(), array(), Comparison::IN);
     }
-
 }
