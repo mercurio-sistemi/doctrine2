@@ -76,6 +76,10 @@ or any public API on instantiated objects.
 Please implement the `Doctrine\ORM\Repository\RepositoryFactory` interface instead of extending
 the `Doctrine\ORM\Repository\DefaultRepositoryFactory`.
 
+## BC BREAK: `Doctrine/\ORM\Persisters\BasicEntityPersister::getSelectConditionStatementColumnSQL` has been merked as `private`
+
+The `getSelectConditionStatementColumnSQL` has been removed (marked as `private) form the API.
+
 # Upgrade to 2.4
 
 ## BC BREAK: Compatibility Bugfix in PersistentCollection#matching()
