@@ -86,10 +86,7 @@ or any public API on instantiated objects.
 Please implement the `Doctrine\ORM\Repository\RepositoryFactory` interface instead of extending
 the `Doctrine\ORM\Repository\DefaultRepositoryFactory`.
 
-## BC BREAK: `Doctrine/\ORM\Persisters\BasicEntityPersister::getSelectConditionStatementColumnSQL` has been merked as `private`
-
-The `getSelectConditionStatementColumnSQL` has been removed (marked as `private`) from the API.
-
+<<<<<<< HEAD
 ## BC BREAK: New object expression DQL queries now respects user provided aliasing and not return consumed fields
 
 When executing DQL queries with new object expressions, instead of returning DTOs numerically indexes, it will now respect user provided aliases. Consider the following query:
@@ -121,6 +118,11 @@ From now on, the resultset will look like this:
         ),
         ...
     )
+=======
+## BC BREAK: `Doctrine/\ORM\Persisters\BasicEntityPersister::getSelectConditionStatementColumnSQL` has been merked as `private`
+
+The `getSelectConditionStatementColumnSQL` has been removed (marked as `private`) from the API.
+>>>>>>> Documented BC break about removal of
 
 # Upgrade to 2.4
 
