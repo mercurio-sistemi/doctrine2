@@ -37,7 +37,7 @@ class CompositePrimaryKeyWithAssociationsTest extends \Doctrine\Tests\OrmFunctio
         $this->_em->clear();
     }
 
-    public function testFindBy()
+    public function testFindByAbleToGetCompositeEntitiesWithMixedTypeIdentifiers()
     {
         $admin1Repo = $this->_em->getRepository('Doctrine\Tests\Models\GeoNames\Admin1');
         $admin1NamesRepo = $this->_em->getRepository('Doctrine\Tests\Models\GeoNames\Admin1AlternateName');

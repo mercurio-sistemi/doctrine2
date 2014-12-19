@@ -2438,34 +2438,6 @@ class UnitOfWork implements PropertyChangedListener
     }
 
     /**
-     * Creates a flat array of identifying keys for an entity.
-     * @param ClassMetadata $class
-     * @param array $data
-     * @return array
-     */
-    private function getFlatEntityIdentifier(ClassMetadata $class, array $data)
-    {
-        $id = array();
-
-        foreach ($class->identifier as $fieldName) {
-            // when $data comes from second-level cache, $data[$fieldName] is already a valid entity
-            if (isset($class->associationMappings[$fieldName]) && isset($data[$fieldName]) && is_object($data[$fieldName])) {
-                $id[$fieldName] = implode(' ', $this->getEntityIdentifier($data[$fieldName]));
-            } elseif (isset($class->associationMappings[$fieldName])) {
-                $tmpId = array();
-                foreach ($class->associationMappings[$fieldName]['joinColumns'] as $joinColumn) {
-                    $tmpId[] = $data[$joinColumn['name']];
-                }
-                $id[$fieldName] = implode(' ', $tmpId);
-             } else {
-                $id[$fieldName] = $data[$fieldName];
-            }
-        }
-
-        return $id;
-    }
-
-    /**
      * INTERNAL:
      * Creates an entity. Used for reconstitution of persistent entities.
      *
@@ -2486,7 +2458,7 @@ class UnitOfWork implements PropertyChangedListener
         $class = $this->em->getClassMetadata($className);
         //$isReadOnly = isset($hints[Query::HINT_READ_ONLY]);
 
-        $id = $this->getFlatEntityIdentifier($class, $data);
+        $id = $this->identifierFlattener->flattenIdentifier($class, $data);
         $idHash = implode(' ', $id);
 
         if (isset($this->identityMap[$class->rootEntityName][$idHash])) {
