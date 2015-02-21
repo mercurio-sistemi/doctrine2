@@ -81,7 +81,7 @@ class CommitOrderCalculator
         $sorted = array_reverse($this->_sorted);
 
         $this->_sorted = $this->_nodeStates = array();
-
+        var_dump(array_map(function($c){ return $c->name; }, $sorted));
         return $sorted;
     }
 

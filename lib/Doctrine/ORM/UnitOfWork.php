@@ -129,14 +129,14 @@ class UnitOfWork implements PropertyChangedListener
      * @var array
      */
     private $entityInsertions = array();
-    
+
     /**
      * A list of all pending entity insertions, that can be avoided if we call
      * a flush() method with a non related entity.
      * @var array
      */
     private $entityShouldBeInserted = array();
-    
+
     /**
      * Used to detect if a flush is in progress.
      * @see scheduleForInsert() method.
@@ -654,9 +654,9 @@ class UnitOfWork implements PropertyChangedListener
                 $this->entityUpdates[$oid]      = $entity;
             }
         }
-
         // Look for changes in associations of the entity
         foreach ($class->associationMappings as $field => $assoc) {
+
             if (($val = $class->reflFields[$field]->getValue($entity)) !== null) {
                 $this->computeAssociationChanges($assoc, $val);
                 if (!isset($this->entityChangeSets[$oid]) &&
@@ -682,7 +682,7 @@ class UnitOfWork implements PropertyChangedListener
         // Compute changes for INSERTed entities first. This must always happen.
         $this->entityInsertions = $this->entityInsertions + $this->entityShouldBeInserted;
         $this->entityShouldBeInserted = array();
-        
+
         $this->computeScheduleInsertsChangeSets();
 
         // Compute changes for other MANAGED entities. Change tracking policies take effect here.
@@ -768,10 +768,9 @@ class UnitOfWork implements PropertyChangedListener
                     )
                 );
             }
-
             switch ($state) {
                 case self::STATE_NEW:
-                    if ( ! $assoc['isCascadePersist']) {
+                    if (! $assoc['isCascadePersist']) {
                         throw ORMInvalidArgumentException::newEntityFoundThroughRelationship($assoc, $entry);
                     }
 
@@ -794,6 +793,12 @@ class UnitOfWork implements PropertyChangedListener
                     break;
 
                 default:
+                    $oid = spl_object_hash($entry);
+                    if (isset($this->entityShouldBeInserted[$oid])){
+                        unset($this->entityShouldBeInserted[$oid]);
+                        $this->persistNew($targetClass, $entry);
+                        $this->computeChangeSet($targetClass, $entry);
+                    }
                     // MANAGED associated entities are already taken into account
                     // during changeset calculation anyway, since they are in the identity map.
             }
@@ -824,6 +829,15 @@ class UnitOfWork implements PropertyChangedListener
             }
 
             $this->entityIdentifiers[$oid] = $idValue;
+        }
+
+        if ($class->containsForeignIdentifier){
+            $assoc = $class->associationMappings[$class->identifier[0]];
+
+            $id = $this->getEntityIdentifier($class->getFieldValue($entity, $class->identifier[0]));
+            $this->entityIdentifiers[$oid] = array(
+                $assoc['joinColumns'][0]['name'] => reset($id)
+            );
         }
 
         $this->entityStates[$oid] = self::STATE_MANAGED;
@@ -1052,6 +1066,10 @@ class UnitOfWork implements PropertyChangedListener
     {
         if ($entityChangeSet === null) {
             $entityChangeSet = array_merge($this->entityInsertions, $this->entityUpdates, $this->entityDeletions);
+
+
+                echo "XXXXXXXXXXXXXXXXxx\n";
+
         }
 
         $calc = $this->getCommitOrderCalculator();
@@ -1079,15 +1097,17 @@ class UnitOfWork implements PropertyChangedListener
         // Calculate dependencies for new nodes
         while ($class = array_pop($newNodes)) {
             foreach ($class->associationMappings as $assoc) {
-                if ( ! ($assoc['isOwningSide'] && $assoc['type'] & ClassMetadata::TO_ONE)) {
+                $targetClass = $this->em->getClassMetadata($assoc['targetEntity']);
+
+
+                if ( ! ($assoc['isOwningSide'] && $assoc['type'] & ClassMetadata::TO_ONE )) {
                     continue;
                 }
 
-                $targetClass = $this->em->getClassMetadata($assoc['targetEntity']);
+
 
                 if ( ! $calc->hasClass($targetClass->name)) {
                     $calc->addClass($targetClass);
-
                     $newNodes[] = $targetClass;
                 }
 
@@ -1112,7 +1132,7 @@ class UnitOfWork implements PropertyChangedListener
             }
         }
 
-        return $calc->getCommitOrder();
+        return $calc->getCommitOrder(1);
     }
 
     /**
@@ -1369,7 +1389,7 @@ class UnitOfWork implements PropertyChangedListener
         } elseif (count($id) && is_object(reset($id))) {
             $state = $this->getEntityState(reset($id));
             if ($state===self::STATE_NEW) {
-                return self::STATE_NEW;    
+                return self::STATE_NEW;
             }
         }
 
@@ -1967,7 +1987,7 @@ class UnitOfWork implements PropertyChangedListener
 
         	$this->cascadeRefresh($entity, $visited);
         }
-        
+
     }
 
     /**

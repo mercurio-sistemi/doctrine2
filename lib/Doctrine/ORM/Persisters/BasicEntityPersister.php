@@ -515,25 +515,29 @@ class BasicEntityPersister
                 if ($newVal !== null) {
                     $oid = spl_object_hash($newVal);
 
-                    if (isset($this->_queuedInserts[$oid]) || $uow->isScheduledForInsert($newVal)) {
+                    if ((isset($this->_queuedInserts[$oid]) || $uow->isScheduledForInsert($newVal))) {
                         // The associated entity $newVal is not yet persisted, so we must
                         // set $newVal = null, in order to insert a null value and schedule an
                         // extra update on the UnitOfWork.
-                        $uow->scheduleExtraUpdate($entity, array(
-                            $field => array(null, $newVal)
-                        ));
-                        $newVal = null;
+                        if ($assoc['id']){
+                            $uow->scheduleExtraUpdate($entity, array(
+                                $field => array(null, $newVal)
+                            ));
+                            $newVal = null;
+                        }
+
                     }
                 }
 
                 if ($newVal !== null) {
                     $newValId = $uow->getEntityIdentifier($newVal);
                 }
-
                 $targetClass = $this->_em->getClassMetadata($assoc['targetEntity']);
+
                 $owningTable = $this->getOwningTable($field);
 
                 foreach ($assoc['sourceToTargetKeyColumns'] as $sourceColumn => $targetColumn) {
+
                     if ($newVal === null) {
                         $result[$owningTable][$sourceColumn] = null;
                     } else if ($targetClass->containsForeignIdentifier) {
@@ -1454,7 +1458,7 @@ class BasicEntityPersister
     /**
      * Infer (recursivley) field type to be used by parameter type casting.
      * Used by getType() method.
-     * 
+     *
      * @param string $field
      * @param mixed $value
      * @return integer
@@ -1479,7 +1483,7 @@ class BasicEntityPersister
 
             default:
                return null;
-        }   
+        }
     }
 
     /**
@@ -1514,12 +1518,12 @@ class BasicEntityPersister
     	if (is_object($value)){
     		$className = get_class($value);
     		$metadataFactory = $this->_em->getMetadataFactory();
-    		
+
     		if ($value instanceof Proxy && !$metadataFactory->hasMetadataFor($className)) {
    				$metadataFactory->setMetadataFor($className, $metadataFactory->getMetadataFor(ClassUtils::getRealClass($className)));
     		}
 	    	if ($metadataFactory->hasMetadataFor($className)) {
-	
+
 	            if ($this->_em->getUnitOfWork()->getEntityState($value) === UnitOfWork::STATE_MANAGED) {
 	                $idValues = $this->_em->getUnitOfWork()->getEntityIdentifier($value);
 	            } else {
