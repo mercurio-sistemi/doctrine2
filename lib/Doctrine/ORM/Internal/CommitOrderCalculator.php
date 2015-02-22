@@ -36,6 +36,7 @@ class CommitOrderCalculator
     private $_nodeStates = array();
     private $_classes = array(); // The nodes to sort
     private $_relatedClasses = array();
+    private $_strongRelatedClasses = array();
     private $_sorted = array();
 
     /**
@@ -47,6 +48,7 @@ class CommitOrderCalculator
     {
         $this->_classes =
         $this->_relatedClasses = array();
+        $this->_strongRelatedClasses = array();
     }
 
     /**
@@ -81,7 +83,6 @@ class CommitOrderCalculator
         $sorted = array_reverse($this->_sorted);
 
         $this->_sorted = $this->_nodeStates = array();
-
         return $sorted;
     }
 
@@ -101,9 +102,17 @@ class CommitOrderCalculator
         $this->_sorted[] = $node;
     }
 
-    public function addDependency($fromClass, $toClass)
+    public function addDependency($fromClass, $toClass, $strong = 0)
     {
-        $this->_relatedClasses[$fromClass->name][] = $toClass;
+        if ($strong) {
+            unset($this->_relatedClasses[$toClass->name][$fromClass->name]);
+            unset($this->_strongRelatedClasses[$toClass->name][$fromClass->name]);
+        }
+
+        if ($strong || !$this->_strongRelatedClasses[$toClass->name][$fromClass->name]) {
+            $this->_relatedClasses[$fromClass->name][$toClass->name] = $toClass;
+            $this->_strongRelatedClasses[$fromClass->name][$toClass->name] = $strong;
+        }
     }
 
     public function hasClass($className)

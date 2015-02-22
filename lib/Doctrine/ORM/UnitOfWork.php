@@ -1070,7 +1070,7 @@ class UnitOfWork implements PropertyChangedListener
                     $newNodes[] = $targetClass;
                 }
 
-                $calc->addDependency($targetClass, $class);
+                $calc->addDependency($targetClass, $class, $assoc['id']);
 
                 // If the target class has mapped subclasses, these share the same dependency.
                 if ( ! $targetClass->subClasses) {
@@ -1343,7 +1343,7 @@ class UnitOfWork implements PropertyChangedListener
         } elseif (count($id) && is_object(reset($id))) {
             $state = $this->getEntityState(reset($id));
             if ($state===self::STATE_NEW) {
-                return self::STATE_NEW;    
+                return self::STATE_NEW;
             }
         }
 
