@@ -5,6 +5,7 @@
     "keywords": ["orm", "database"],
     "homepage": "http://www.doctrine-project.org",
     "license": "MIT",
+    
     "authors": [
         {"name": "Guilherme Blanco", "email": "guilhermeblanco@gmail.com"},
         {"name": "Roman Borschel", "email": "roman@code-factory.org"},
@@ -22,6 +23,7 @@
         "doctrine/cache": "~1.4",
         "symfony/console": "~2.5"
     },
+    
     "require-dev": {
         "symfony/yaml": "~2.1",
         "phpunit/phpunit": "~4.0",
