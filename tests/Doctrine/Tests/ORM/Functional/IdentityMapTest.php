@@ -280,7 +280,7 @@ class IdentityMapTest extends \Doctrine\Tests\OrmFunctionalTestCase
         // The PersistentCollection references its owner, hence without breaking
         // the cycle the object will not (yet) be garbage collected and thus
         // the object hash is not reused. This is not a memory leak!
-        if (defined('HHVM_VERSION')) {
+        if (defined('HHVM_VERSION') || version_compare(PHP_VERSION, '7.0.0') >= 0) {
             $ed = $this->_em->getUnitOfWork()->getOriginalEntityData($user);
             $ed['phonenumbers']->setOwner(null, array('inversedBy' => 1));
             $ed['articles']->setOwner(null, array('inversedBy' => 1));
