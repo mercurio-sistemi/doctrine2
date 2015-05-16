@@ -73,7 +73,10 @@ class DefaultEntityHydrator implements EntityHydrator
     public function buildCacheEntry(ClassMetadata $metadata, EntityCacheKey $key, $entity)
     {
         $data = $this->uow->getOriginalEntityData($entity);
-        $data = array_merge($data, $key->identifier); // why update has no identifier values ?
+
+        $identifier = array_diff_key($key->identifier, $metadata->associationMappings);
+
+        $data = array_merge($data, $identifier); // why update has no identifier values ?
 
         foreach ($metadata->associationMappings as $name => $assoc) {
 
